@@ -18,6 +18,9 @@ use Joomla\CMS\MVC\Controller\BaseController;
 
 class DisplayController extends BaseController
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     protected $default_view = 'tokens';
 
     public function display($cachable = false, $urlparams = [])

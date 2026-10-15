@@ -66,7 +66,7 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 								$statusBadge = match ($item->status) {
 									'ok' => 'bg-success',
 									'error' => 'bg-danger',
-									'confirmation_required' => 'bg-warning text-dark',
+									'confirm' => 'bg-warning text-dark',
 									default => 'bg-secondary',
 								};
 							?>
@@ -82,7 +82,7 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 									</td>
 									<td class="text-center">
 										<span class="badge <?php echo $statusBadge; ?>">
-											<?php echo $this->escape($item->status); ?>
+											<?php $statusKey = 'COM_DHARMA_MCP_LOG_STATUS_' . strtoupper((string) $item->status); $statusText = Text::_($statusKey); echo $this->escape($statusText === $statusKey ? $item->status : $statusText); ?>
 										</span>
 									</td>
 									<td class="text-center text-nowrap">

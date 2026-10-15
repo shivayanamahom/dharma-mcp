@@ -22,6 +22,9 @@ use Joomla\CMS\Toolbar\ToolbarHelper;
 
 class HtmlView extends BaseHtmlView
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     protected $items;
     protected $pagination;
     protected $state;

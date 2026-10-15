@@ -18,6 +18,9 @@ use Joomla\CMS\MVC\Controller\AdminController;
 
 class LogsController extends AdminController
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     public function getModel($name = 'Logs', $prefix = 'Administrator', $config = ['ignore_request' => true])
     {
         return parent::getModel($name, $prefix, $config);

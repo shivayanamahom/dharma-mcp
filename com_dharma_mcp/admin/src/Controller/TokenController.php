@@ -18,4 +18,7 @@ use Joomla\CMS\MVC\Controller\FormController;
 
 class TokenController extends FormController
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
 }

@@ -21,6 +21,9 @@ use Joomla\Registry\Registry;
 
 class TokenModel extends AdminModel
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     public function getTable($name = 'Token', $prefix = 'Administrator', $options = []): Table
     {
         return parent::getTable($name, $prefix, $options);

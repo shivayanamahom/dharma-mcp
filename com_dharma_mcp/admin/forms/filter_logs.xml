@@ -10,9 +10,9 @@
 			label="COM_DHARMA_MCP_LOG_STATUS"
 			onchange="this.form.submit();">
 			<option value="">- Выберите статус -</option>
-			<option value="ok">ok</option>
-			<option value="error">error</option>
-			<option value="confirmation_required">confirmation_required</option>
+			<option value="ok">COM_DHARMA_MCP_LOG_STATUS_OK</option>
+			<option value="error">COM_DHARMA_MCP_LOG_STATUS_ERROR</option>
+			<option value="confirm">COM_DHARMA_MCP_LOG_STATUS_CONFIRM</option>
 		</field>
 	</fields>
 

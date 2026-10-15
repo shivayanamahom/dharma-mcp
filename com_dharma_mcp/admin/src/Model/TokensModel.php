@@ -19,6 +19,9 @@ use Joomla\Database\ParameterType;
 
 class TokensModel extends ListModel
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     public function __construct($config = [])
     {
         if (empty($config['filter_fields'])) {

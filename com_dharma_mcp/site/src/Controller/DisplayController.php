@@ -35,6 +35,9 @@ use Joomla\Database\ParameterType;
  */
 class DisplayController extends BaseController
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     public function display($cachable = false, $urlparams = [])
     {
         // Страница согласия OAuth — обычный HTML-вид Joomla, остальное — JSON-эндпоинт MCP.

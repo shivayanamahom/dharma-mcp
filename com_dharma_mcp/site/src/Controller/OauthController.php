@@ -31,6 +31,9 @@ use Joomla\Database\DatabaseInterface;
  */
 class OauthController extends BaseController
 {
+    /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
+    protected $option = 'com_dharma_mcp';
+
     /** Метаданные защищённого ресурса (RFC 9728). */
     public function resource(): void
     {
@@ -204,8 +207,11 @@ class OauthController extends BaseController
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
-        header('Cache-Control: no-store');
-        header('Location: ' . $url, true, 303);
+        // Заголовки через приложение Joomla: так они одинаково отправляются и проверяются.
+        $this->app->setHeader('Cache-Control', 'no-store', true);
+        $this->app->setHeader('Location', $url, true);
+        $this->app->setHeader('Status', '303', true);
+        $this->app->sendHeaders();
         $this->app->close();
         exit;
     }
