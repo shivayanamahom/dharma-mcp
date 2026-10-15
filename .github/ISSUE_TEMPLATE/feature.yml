@@ -1,0 +1,16 @@
+name: Предложить возможность
+description: Новый инструмент, набор или улучшение
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Что хотите уметь делать из чата с ассистентом
+      placeholder: Например, «изменить порядок пунктов меню»
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Что должно быть защищено
+      description: Какие данные или действия нельзя менять без подтверждения

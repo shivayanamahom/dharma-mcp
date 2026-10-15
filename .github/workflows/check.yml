@@ -1,0 +1,42 @@
+name: Проверка
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Синтаксис PHP
+        run: |
+          fail=0
+          while IFS= read -r -d '' f; do php -l "$f" >/dev/null || { echo "::error file=$f::синтаксическая ошибка PHP"; fail=1; }; done < <(find com_dharma_mcp plg_* pkg dev -name '*.php' -print0)
+          exit $fail
+
+      - name: Манифесты и версии
+        run: |
+          python3 - <<'PY'
+          import glob, re, sys, xml.dom.minidom as m
+          files = glob.glob('pkg/*.xml') + glob.glob('com_dharma_mcp/*.xml') + glob.glob('plg_*/*.xml') + glob.glob('updates/*.xml') + glob.glob('com_dharma_mcp/admin/*.xml') + glob.glob('com_dharma_mcp/admin/forms/*.xml')
+          for f in files:
+              m.parse(f)
+          versions = {re.search(r'<version>(.*?)</version>', open(f, encoding='utf-8').read()).group(1) for f in glob.glob('pkg/pkg_dharma_mcp.xml') + glob.glob('com_dharma_mcp/dharma_mcp.xml') + glob.glob('plg_*/*.xml')}
+          print('версии:', versions)
+          sys.exit(0 if len(versions) == 1 else 1)
+          PY
+
+      - name: Справочник инструментов актуален
+        run: |
+          python3 dev/gen-tools-doc.py
+          git diff --exit-code docs/TOOLS.md || { echo "::error::docs/TOOLS.md устарел: выполните python3 dev/gen-tools-doc.py"; exit 1; }
+
+      - name: Сборка пакета
+        run: ./build.sh

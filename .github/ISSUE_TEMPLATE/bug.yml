@@ -1,0 +1,38 @@
+name: Сообщить об ошибке
+description: Что-то не работает или работает не так
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Не публикуйте токены доступа, пароли и персональные данные. Об уязвимостях сообщайте закрыто (Security → Report a vulnerability), см. [SECURITY](../blob/main/docs/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Версия Dharma MCP
+      description: Система → Управление → Расширения → «Dharma MCP»
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Joomla, PHP, веб-сервер
+      placeholder: Joomla 6.2, PHP 8.4, nginx
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Как подключались
+      options: [Токен (Claude Code, Cursor, curl), Claude Desktop / claude.ai (OAuth), ChatGPT (OAuth), Другое]
+  - type: textarea
+    id: what
+    attributes:
+      label: Что произошло и что ожидали
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Ответ сервера или запись из «Журнала вызовов»
+      render: text

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Документация
+    url: https://github.com/shivayanamahom/dharma-mcp/blob/main/docs/INSTALL.md
+    about: Установка, подключение клиентов, особенности хостинга (nginx, заголовок Authorization)
