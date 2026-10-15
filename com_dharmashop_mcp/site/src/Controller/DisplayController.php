@@ -26,17 +26,19 @@ class DisplayController extends BaseController
         // Проверяем включён ли компонент
         $params = ComponentHelper::getParams('com_dharmashop_mcp');
         if ((int) $params->get('enabled', 1) !== 1) {
-            $app->setHeader('Status', '503 Service Unavailable', true);
+            http_response_code(503);
+            $app->setHeader('status', 503, true);
+            $app->setHeader('Content-Type', 'application/json; charset=utf-8', true);
             echo (new JsonRpcResponse(null, null, new JsonRpcError(JsonRpcError::INTERNAL_ERROR, 'MCP server is disabled')))->toJson();
             $app->close();
         }
 
-        $app->setHeader('Content-Type', 'application/json; charset=utf-8', true);
-
         // Читаем входное тело запроса
         $rawBody = file_get_contents('php://input');
-        if (empty($rawBody)) {
-            $app->setHeader('Status', '400 Bad Request', true);
+        if ($rawBody === false || trim($rawBody) === '') {
+            http_response_code(400);
+            $app->setHeader('status', 400, true);
+            $app->setHeader('Content-Type', 'application/json; charset=utf-8', true);
             echo (new JsonRpcResponse(null, null, new JsonRpcError(JsonRpcError::PARSE_ERROR, 'Empty request body')))->toJson();
             $app->close();
         }
@@ -44,7 +46,9 @@ class DisplayController extends BaseController
         try {
             $request = JsonRpcRequest::fromRaw($rawBody);
         } catch (\InvalidArgumentException $e) {
-            $app->setHeader('Status', '400 Bad Request', true);
+            http_response_code(400);
+            $app->setHeader('status', 400, true);
+            $app->setHeader('Content-Type', 'application/json; charset=utf-8', true);
             echo (new JsonRpcResponse(null, null, new JsonRpcError(JsonRpcError::INVALID_REQUEST, $e->getMessage())))->toJson();
             $app->close();
         }
@@ -63,8 +67,16 @@ class DisplayController extends BaseController
         $auth = $authenticator->authenticate($authHeader, $clientIp);
 
         if (!$auth->success) {
-            $app->setHeader('Status', '401 Unauthorized', true);
-            echo (new JsonRpcResponse($request->id, null, new JsonRpcError(JsonRpcError::UNAUTHORIZED, $auth->errorMessage ?? 'Unauthorized')))->toJson();
+            $httpCode = $auth->errorCode > 0 ? $auth->errorCode : 401;
+            http_response_code($httpCode);
+            $app->setHeader('status', $httpCode, true);
+            $app->setHeader('Content-Type', 'application/json; charset=utf-8', true);
+            if ($httpCode === 401) {
+                header('WWW-Authenticate: Bearer');
+                $app->setHeader('WWW-Authenticate', 'Bearer', true);
+            }
+            $rpcCode = $httpCode === 403 ? JsonRpcError::FORBIDDEN : JsonRpcError::UNAUTHORIZED;
+            echo (new JsonRpcResponse($request->id, null, new JsonRpcError($rpcCode, $auth->errorMessage ?? 'Unauthorized')))->toJson();
             $app->close();
         }
 
@@ -73,8 +85,32 @@ class DisplayController extends BaseController
         $logger = new AuditLogger($db);
         $server = new McpServer($registry, $logger);
 
+        // Уведомления JSON-RPC не требуют ответа: отвечаем HTTP 202 Accepted без тела
+        if ($request->isNotification()) {
+            $server->handle($request, $auth, $clientIp, $userAgent);
+            http_response_code(202);
+            $app->setHeader('status', 202, true);
+            $app->close();
+        }
+
         $response = $server->handle($request, $auth, $clientIp, $userAgent);
 
+        if ($response->error !== null) {
+            if ($response->error->code === JsonRpcError::FORBIDDEN) {
+                http_response_code(403);
+                $app->setHeader('status', 403, true);
+            } elseif ($response->error->code === JsonRpcError::UNAUTHORIZED) {
+                http_response_code(401);
+                $app->setHeader('status', 401, true);
+                header('WWW-Authenticate: Bearer');
+                $app->setHeader('WWW-Authenticate', 'Bearer', true);
+            } elseif ($response->error->code === JsonRpcError::INVALID_REQUEST || $response->error->code === JsonRpcError::PARSE_ERROR) {
+                http_response_code(400);
+                $app->setHeader('status', 400, true);
+            }
+        }
+
+        $app->setHeader('Content-Type', 'application/json; charset=utf-8', true);
         echo $response->toJson();
         $app->close();
     }

@@ -13,6 +13,11 @@ final class JsonRpcRequest
         public readonly array $params = []
     ) {}
 
+    public function isNotification(): bool
+    {
+        return $this->id === null;
+    }
+
     public static function fromRaw(string $raw): self
     {
         $data = json_decode($raw, true);

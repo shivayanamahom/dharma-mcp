@@ -48,18 +48,32 @@ final class ShopInfoTool implements ToolInterface
     public function execute(array $arguments, AuthResult $auth): array
     {
         $app = Factory::getApplication();
-        $db = Factory::getDbo();
 
         $shopParams = ComponentHelper::getParams('com_dharmashop');
         $mcpParams = ComponentHelper::getParams('com_dharmashop_mcp');
 
-        // Считаем опубликованные товары и заказы
+        // Считаем опубликованные товары и заказы через публичные сервисы магазина com_dharmashop
         $productsCount = 0;
         $ordersCount = 0;
-        try {
-            $productsCount = (int) $db->setQuery('SELECT COUNT(*) FROM #__dharmashop_products WHERE state = 1')->loadResult();
-            $ordersCount = (int) $db->setQuery('SELECT COUNT(*) FROM #__dharmashop_orders')->loadResult();
-        } catch (\Throwable) {}
+        if (ComponentHelper::isEnabled('com_dharmashop')) {
+            try {
+                $component = $app->bootComponent('com_dharmashop');
+                $mvcFactory = $component->getMVCFactory();
+
+                $productsModel = $mvcFactory->createModel('Products', 'Administrator', ['ignore_request' => true]);
+                if ($productsModel) {
+                    $productsModel->setState('filter.published', 1);
+                    $productsCount = (int) $productsModel->getTotal();
+                }
+
+                $ordersModel = $mvcFactory->createModel('Orders', 'Administrator', ['ignore_request' => true]);
+                if ($ordersModel) {
+                    $ordersCount = (int) $ordersModel->getTotal();
+                }
+            } catch (\Throwable) {
+                // Если сервисы недоступны, счетчики остаются 0
+            }
+        }
 
         return [
             'site_name' => $app->get('sitename'),

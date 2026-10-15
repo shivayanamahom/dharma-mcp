@@ -5,6 +5,7 @@ namespace Dharma\Component\DharmaShopMcp\Site\Audit;
 
 \defined('_JEXEC') or die;
 
+use Dharma\Component\DharmaShopMcp\Site\Support\PiiMasker;
 use Joomla\CMS\Factory;
 use Joomla\Database\DatabaseInterface;
 
@@ -29,15 +30,15 @@ final class AuditLogger
         try {
             $argsJson = null;
             if (!empty($arguments)) {
-                // Маскируем возможные пароли и токены в аргументах
-                $clean = $arguments;
-                unset($clean['password'], $clean['token'], $clean['secret']);
+                // Маскируем пароли, токены и чувствительные PII (email, телефон, адрес) в аргументах
+                $clean = PiiMasker::sanitizeLogArguments($arguments);
                 $argsJson = json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 if (strlen((string) $argsJson) > 65000) {
                     $argsJson = substr((string) $argsJson, 0, 65000) . '...[truncated]';
                 }
             }
 
+            $created = Factory::getDate()->toSql();
             $query = $this->db->createQuery()
                 ->insert($this->db->quoteName('#__dharmashop_mcp_logs'))
                 ->columns([
@@ -58,8 +59,7 @@ final class AuditLogger
                 ->bind(':error', $errorMessage)
                 ->bind(':ip', $ip)
                 ->bind(':ua', $userAgent)
-                $created = Factory::getDate()->toSql();
-            $query->bind(':created', $created);
+                ->bind(':created', $created);
 
             $this->db->setQuery($query)->execute();
         } catch (\Throwable) {

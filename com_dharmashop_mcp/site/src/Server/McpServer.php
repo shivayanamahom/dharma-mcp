@@ -10,6 +10,7 @@ use Dharma\Component\DharmaShopMcp\Site\Audit\AuditLogger;
 use Dharma\Component\DharmaShopMcp\Site\Protocol\JsonRpcError;
 use Dharma\Component\DharmaShopMcp\Site\Protocol\JsonRpcRequest;
 use Dharma\Component\DharmaShopMcp\Site\Protocol\JsonRpcResponse;
+use Dharma\Component\DharmaShopMcp\Site\Support\PiiMasker;
 use Dharma\Component\DharmaShopMcp\Site\Tool\ToolRegistry;
 use Joomla\CMS\Component\ComponentHelper;
 
@@ -37,8 +38,9 @@ final class McpServer
                 'initialize' => $this->handleInitialize($request),
                 'ping' => ['status' => 'pong'],
                 'tools/list' => ['tools' => $this->registry->getToolsListForAuth($auth, $serverMode)],
-                'tools/call' => $this->handleToolCall($request, $auth, $serverMode, $toolName, $arguments),
-                default => throw new \InvalidArgumentException('Method not found: ' . $method, JsonRpcError::METHOD_NOT_FOUND),
+                'tools/call' => $this->handleToolCall($request, $auth, $serverMode, $toolName, $arguments, $params),
+                'notifications/initialized' => null,
+                default => $request->isNotification() ? null : throw new \InvalidArgumentException('Method not found: ' . $method, JsonRpcError::METHOD_NOT_FOUND),
             };
 
             $response = JsonRpcResponse::success($request->id, $result);
@@ -86,7 +88,7 @@ final class McpServer
         ];
     }
 
-    private function handleToolCall(JsonRpcRequest $request, AuthResult $auth, string $serverMode, ?string &$toolName, ?array &$arguments): array
+    private function handleToolCall(JsonRpcRequest $request, AuthResult $auth, string $serverMode, ?string &$toolName, ?array &$arguments, \Joomla\Registry\Registry $params): array
     {
         $toolName = (string) ($request->params['name'] ?? '');
         $arguments = is_array($request->params['arguments'] ?? null) ? $request->params['arguments'] : [];
@@ -105,6 +107,13 @@ final class McpServer
         }
 
         $toolResult = $tool->execute($arguments, $auth);
+
+        $piiEnabled = (bool) (int) $params->get('pii_enabled', 0);
+        $maskPii = (bool) (int) $params->get('mask_pii', 1);
+
+        if (is_array($toolResult)) {
+            $toolResult = PiiMasker::maskArray($toolResult, $piiEnabled, $maskPii);
+        }
 
         return [
             'content' => [
