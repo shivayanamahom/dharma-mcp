@@ -83,7 +83,7 @@ final class ProductsCreateTool extends AbstractEntityTool
             'intro_text' => self::str('Short description (HTML).'),
             'full_text' => self::str('Full description (HTML).'),
             'sku' => self::str('Article number (must be unique).'),
-            'price' => ['type' => 'number', 'minimum' => 0, 'description' => 'Price.'],
+            'price' => ['type' => ['number', 'string'], 'description' => 'Price, a number >= 0 (a text like "16 900" is accepted too).'],
             'discount' => self::str('Discount: amount ("500") or percent ("10%").'),
             'unit' => self::str('Unit of measure, e.g. "шт".'),
             'stock_tracked' => self::bool('true to track stock quantity.'),
@@ -105,6 +105,15 @@ final class ProductsCreateTool extends AbstractEntityTool
         foreach (self::FIELDS as $argument => $field) {
             if (\array_key_exists($argument, $arguments) && $arguments[$argument] !== null) {
                 $data[$field] = $arguments[$argument];
+            }
+        }
+        foreach (['price', 'stock_qty'] as $numeric) {
+            if (isset($data[$numeric])) {
+                $number = self::number($data[$numeric]);
+                if ($number === null || $number < 0) {
+                    throw ToolException::validation("Parameter '$numeric' must be a number >= 0 (spaces and a decimal comma are accepted, e.g. \"16 900\").");
+                }
+                $data[$numeric] = $number;
             }
         }
         if (isset($data['stock_tracked'])) {

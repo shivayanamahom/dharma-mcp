@@ -576,6 +576,11 @@ def shop_admin_flows(c, have, P):
                     check("shop.image_upload: адрес внутренней сети отклонён", err and bad.get("error") == "validation", json.dumps(bad)[:120])
                     err, bad = c.call("shop.image_upload", {"url": "http://example.com/a.png"})
                     check("shop.image_upload: адрес без https отклонён", err and bad.get("error") == "validation", json.dumps(bad)[:120])
+                prev, err, t = c.confirmed("products.update", {"id": pid, "price": "17 000,5"})
+                err, g = c.call("products.get", {"id": pid})
+                check("products.update: цена с пробелом и запятой («17 000,5») читается правильно", not err and g.get("price") == 17000.5, json.dumps(g, ensure_ascii=False)[:120])
+                prev, err, t = c.confirmed("products.update", {"id": pid, "price": "дорого"})
+                check("products.update: цена-не число отклонена", err and t.get("error") == "validation", json.dumps(t, ensure_ascii=False)[:120])
                 # --- публикация и удаление
                 prev, err, t = c.confirmed("products.update", {"id": pid, "published": True})
                 check("products.update: публикация", not err and t.get("product", {}).get("published") is True, json.dumps(t)[:140])

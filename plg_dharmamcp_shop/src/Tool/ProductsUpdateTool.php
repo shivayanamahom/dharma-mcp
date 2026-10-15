@@ -90,7 +90,7 @@ final class ProductsUpdateTool extends AbstractShopTool
             'meta_description' => self::str('SEO description.'),
             'meta_keywords' => self::str('SEO keywords.'),
             'published' => self::bool('true to publish, false to unpublish.'),
-            'price' => ['type' => 'number', 'minimum' => 0, 'description' => 'Regular price of the default variant.'],
+            'price' => ['type' => ['number', 'string'], 'description' => 'Regular price of the default variant, a number >= 0 (a text like "16 900" is accepted too).'],
             'discount' => self::str('Discount as an amount ("500") or percent ("10%"); empty string removes it.'),
             'stock_qty' => ['type' => 'number', 'minimum' => 0, 'description' => 'Stock quantity of the default variant.'],
             'alias' => self::str('URL part of the product.'),
@@ -139,9 +139,9 @@ final class ProductsUpdateTool extends AbstractShopTool
                 'gallery' => \is_array($value) && array_is_list($value)
                     ? $value
                     : throw ToolException::validation("Parameter 'gallery' must be a list of images."),
-                'price', 'stock_qty' => is_numeric($value) && (float) $value >= 0
-                    ? (float) $value
-                    : throw ToolException::validation("Parameter '$field' must be a number >= 0."),
+                'price', 'stock_qty' => (self::number($value) ?? -1) >= 0
+                    ? self::number($value)
+                    : throw ToolException::validation("Parameter '$field' must be a number >= 0 (spaces and a decimal comma are accepted, e.g. \"16 900\")."),
                 'title' => \is_string($value) && trim($value) !== ''
                     ? trim($value)
                     : throw ToolException::validation('Title must be a non-empty string.'),

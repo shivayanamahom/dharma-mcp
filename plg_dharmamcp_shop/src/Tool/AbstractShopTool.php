@@ -79,6 +79,21 @@ abstract class AbstractShopTool extends AbstractTool
         ];
     }
 
+    /** Число из текста вида «16 900», «16\u00a0900», «16,9»: пробелы убираются, запятая становится точкой. Иначе null. */
+    protected static function number(mixed $value): ?float
+    {
+        if (\is_int($value) || \is_float($value)) {
+            return (float) $value;
+        }
+        if (!\is_string($value)) {
+            return null;
+        }
+
+        $clean = str_replace(',', '.', preg_replace('/[\s\x{00A0}\x{202F}]+/u', '', $value) ?? '');
+
+        return is_numeric($clean) ? (float) $clean : null;
+    }
+
     protected static function money(mixed $value): ?float
     {
         return $value === null || $value === '' ? null : round((float) $value, 2);
