@@ -5,6 +5,7 @@
 		<description>MCP-сервер для сайта на Joomla: магазин, материалы, меню, модули, шаблон и настройки через ИИ-ассистента.</description>
 		<element>pkg_dharma_mcp</element>
 		<type>package</type>
+		<client>site</client>
 		<version>0.3.0</version>
 		<infourl title="Dharma MCP 0.3.0">https://github.com/shivayanamahom/dharma-mcp/releases/tag/v0.3.0</infourl>
 		<downloads>

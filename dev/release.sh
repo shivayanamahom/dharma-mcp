@@ -47,6 +47,7 @@ write_update_xml() {
 		<description>MCP-сервер для сайта на Joomla: магазин, материалы, меню, модули, шаблон и настройки через ИИ-ассистента.</description>
 		<element>pkg_dharma_mcp</element>
 		<type>package</type>
+		<client>site</client>
 		<version>$VERSION</version>
 		<infourl title="Dharma MCP $VERSION">https://github.com/$REPO/releases/tag/$TAG</infourl>
 		<downloads>
