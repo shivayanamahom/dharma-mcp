@@ -79,6 +79,7 @@ $newTokenUrl = Route::_('index.php?option=com_dharma_mcp&task=token.add');
 				<li><?php echo Text::_('COM_DHARMA_MCP_CONNECT_EXAMPLE_1'); ?></li>
 				<li><?php echo Text::_('COM_DHARMA_MCP_CONNECT_EXAMPLE_2'); ?></li>
 				<li><?php echo Text::_('COM_DHARMA_MCP_CONNECT_EXAMPLE_3'); ?></li>
+				<li><?php echo Text::_('COM_DHARMA_MCP_CONNECT_EXAMPLE_4'); ?></li>
 			</ul>
 			<p class="mb-0 small text-muted"><?php echo Text::_('COM_DHARMA_MCP_CONNECT_SAFETY'); ?></p>
 		</div>

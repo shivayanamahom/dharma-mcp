@@ -30,14 +30,14 @@ abstract class McpHelper
     public static function claudeCodeCommand(string $token = ''): string
     {
         return 'claude mcp add --transport http dharma ' . self::serverUrl()
-            . ' --header "Authorization: Bearer ' . ($token !== '' ? $token : 'ВАШ_ТОКЕН') . '"';
+            . ' --header "Authorization: Bearer ' . ($token !== '' ? $token : Text::_('COM_DHARMA_MCP_YOUR_TOKEN')) . '"';
     }
 
     /** Настройка в формате JSON для Cursor и других клиентов, читающих `mcpServers`. */
     public static function jsonConfig(string $token = ''): string
     {
         return json_encode(
-            ['mcpServers' => ['dharma' => ['url' => self::serverUrl(), 'headers' => ['Authorization' => 'Bearer ' . ($token !== '' ? $token : 'ВАШ_ТОКЕН')]]]],
+            ['mcpServers' => ['dharma' => ['url' => self::serverUrl(), 'headers' => ['Authorization' => 'Bearer ' . ($token !== '' ? $token : Text::_('COM_DHARMA_MCP_YOUR_TOKEN'))]]]],
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
         ) ?: '';
     }
@@ -46,7 +46,7 @@ abstract class McpHelper
     public static function curlCommand(string $token = ''): string
     {
         return "curl -s -X POST " . self::serverUrl() . " -H 'Content-Type: application/json' -H 'Authorization: Bearer "
-            . ($token !== '' ? $token : 'ВАШ_ТОКЕН') . "' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'";
+            . ($token !== '' ? $token : Text::_('COM_DHARMA_MCP_YOUR_TOKEN')) . "' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'";
     }
 
     /**
