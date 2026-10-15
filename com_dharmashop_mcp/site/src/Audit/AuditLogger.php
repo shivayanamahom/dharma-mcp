@@ -58,7 +58,8 @@ final class AuditLogger
                 ->bind(':error', $errorMessage)
                 ->bind(':ip', $ip)
                 ->bind(':ua', $userAgent)
-                ->bind(':created', Factory::getDate()->toSql());
+                $created = Factory::getDate()->toSql();
+            $query->bind(':created', $created);
 
             $this->db->setQuery($query)->execute();
         } catch (\Throwable) {

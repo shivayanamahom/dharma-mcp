@@ -60,7 +60,8 @@ final class TokenAuthenticator
                 ->set($this->db->quoteName('last_used_ip') . ' = :ip')
                 ->set($this->db->quoteName('requests_count') . ' = ' . $this->db->quoteName('requests_count') . ' + 1')
                 ->where($this->db->quoteName('id') . ' = :id')
-                ->bind(':now', Factory::getDate()->toSql())
+                $now = Factory::getDate()->toSql();
+            $update->bind(':now', $now)
                 ->bind(':ip', $clientIp)
                 ->bind(':id', $token->id, ParameterType::INTEGER);
             $this->db->setQuery($update)->execute();

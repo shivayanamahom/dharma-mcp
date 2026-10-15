@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS `#__dharmashop_mcp_tokens` (
   `title` varchar(255) NOT NULL,
   `user_id` int unsigned NOT NULL,
   `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `token_prefix` varchar(16) NOT NULL,
+  `token_prefix` varchar(32) NOT NULL,
   `scopes` text NOT NULL,
   `state` tinyint NOT NULL DEFAULT 1,
   `expires_at` datetime NULL,
