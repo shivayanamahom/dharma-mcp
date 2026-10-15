@@ -220,6 +220,7 @@ def run(args):
         read("products.get", {"id": p["id"]}, lambda t: t.get("id") == p["id"])
     elif "products.get" in have:
         skip("products.get", "в магазине нет товаров")
+    read("products.export", {"limit": 3}, lambda t: t.get("header_included") and t["csv"].split("\n")[0].startswith("id;sku;title") and t.get("rows", 0) <= 3)
     ents = read("shop.entities", {}, lambda t: len(t.get("entities", [])) >= 12)
     if ents:
         for e in ents["entities"]:
@@ -572,6 +573,19 @@ def shop_admin_flows(c, have, P):
             if pid:
                 err, g = c.call("products.get", {"id": pid})
                 check("products.get видит созданный товар", not err and g.get("price") == 1234.5 and g.get("category_id") == cat and g.get("brand_id") == brand and g.get("sku") == "QA-MCP-SKU-1" and g.get("stock_qty") == 5, json.dumps(g, ensure_ascii=False)[:240])
+                # --- таблица цен
+                rows = [{"sku": "QA-MCP-SKU-1", "price": "2 000", "discount": "10%", "stock_qty": 8}, {"sku": "QA-NO-SUCH-SKU", "price": 5}, {"price": 5}]
+                err, t = c.call("products.bulk_update", {"rows": rows})
+                plan = t.get("preview", {}) if isinstance(t, dict) else {}
+                check("products.bulk_update: сначала план и код подтверждения, находит, не находит, ругается на пустую строку",
+                      t.get("status") == "confirmation_required" and plan.get("summary", {}).get("will_change") == 1 and plan["summary"]["skipped_with_problems"] == 2, json.dumps(t, ensure_ascii=False)[:260])
+                err, g = c.call("products.get", {"id": pid})
+                check("products.bulk_update: предпросмотр ничего не изменил", g.get("price") == 1234.5, json.dumps(g)[:100])
+                prev, err, t = c.confirmed("products.bulk_update", {"rows": rows})
+                err, g = c.call("products.get", {"id": pid})
+                check("products.bulk_update: цена, скидка и остаток применены", not err and g.get("price") == 2000 and g.get("discount") == "10%" and g.get("stock_qty") == 8, json.dumps(g, ensure_ascii=False)[:200])
+                err, e = c.call("products.export", {"search": "QA-MCP-SKU-1", "columns": ["sku", "price", "discount", "stock_qty"]})
+                check("products.export: выгрузка совпадает с тем, что записано", not err and "QA-MCP-SKU-1;2000;10%;8" in e.get("csv", ""), json.dumps(e, ensure_ascii=False)[:160])
                 err, t = c.call("products.create", {"title": f"{P} дубль", "category_id": cat, "sku": "QA-MCP-SKU-1"})
                 check("products.create: повторный артикул отклонён", err and t.get("error") == "validation", json.dumps(t, ensure_ascii=False)[:160])
                 err, t = c.call("products.create", {"title": f"{P} чужая", "category_id": brand})
