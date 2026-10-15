@@ -36,8 +36,6 @@ use Joomla\Registry\Registry;
  */
 final class McpServer
 {
-    public const VERSION = '0.2.0';
-
     /** Версии протокола, которые умеем обслуживать; первая — предпочтительная. */
     private const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
@@ -119,6 +117,18 @@ final class McpServer
         return $response;
     }
 
+    /** Версия установленного компонента (из манифеста в базе), чтобы не расходиться с пакетом. */
+    public static function version(): string
+    {
+        static $version = null;
+        if ($version === null) {
+            $record = \Joomla\CMS\Extension\ExtensionHelper::getExtensionRecord('com_dharma_mcp', 'component');
+            $version = $record ? (string) (new Registry((string) $record->manifest_cache))->get('version', 'unknown') : 'unknown';
+        }
+
+        return $version;
+    }
+
     private function initialize(JsonRpcRequest $request): array
     {
         $requested = (string) ($request->params['protocolVersion'] ?? '');
@@ -126,7 +136,7 @@ final class McpServer
         return [
             'protocolVersion' => \in_array($requested, self::PROTOCOLS, true) ? $requested : self::PROTOCOLS[0],
             'capabilities' => ['tools' => ['listChanged' => false]],
-            'serverInfo' => ['name' => 'dharma-mcp', 'title' => 'Dharma MCP', 'version' => self::VERSION],
+            'serverInfo' => ['name' => 'dharma-mcp', 'title' => 'Dharma MCP', 'version' => self::version()],
             'instructions' => self::INSTRUCTIONS,
         ];
     }

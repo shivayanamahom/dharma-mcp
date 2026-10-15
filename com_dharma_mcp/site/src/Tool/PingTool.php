@@ -53,6 +53,7 @@ final class PingTool extends AbstractTool
             'status' => 'pong',
             'time' => gmdate('c'),
             'echo' => isset($arguments['message']) ? (string) $arguments['message'] : null,
+            'server_version' => \Dharma\Component\DharmaMcp\Site\Server\McpServer::version(),
             'server_mode' => $context->serverMode,
             'user' => ['id' => (int) $context->user()->id, 'username' => $context->user()->username],
             'scopes' => $context->auth->scopes,
