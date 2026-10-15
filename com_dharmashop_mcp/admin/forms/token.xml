@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+	<fieldset name="details">
+		<field name="id" type="hidden" />
+
+		<field name="title" type="text"
+			label="COM_DHARMASHOP_MCP_TOKEN_TITLE"
+			description="COM_DHARMASHOP_MCP_TOKEN_TITLE_DESC"
+			class="inputbox form-control"
+			required="true" />
+
+		<field name="user_id" type="user"
+			label="COM_DHARMASHOP_MCP_TOKEN_USER"
+			description="COM_DHARMASHOP_MCP_TOKEN_USER_DESC"
+			required="true" />
+
+		<field name="state" type="radio" layout="joomla.form.field.radio.switcher"
+			label="JSTATUS"
+			default="1">
+			<option value="0">JDISABLED</option>
+			<option value="1">JENABLED</option>
+		</field>
+
+		<field name="scopes" type="checkboxes"
+			label="COM_DHARMASHOP_MCP_TOKEN_SCOPES"
+			description="COM_DHARMASHOP_MCP_TOKEN_SCOPES_DESC"
+			required="true">
+			<option value="shop:read">COM_DHARMASHOP_MCP_SCOPE_SHOP_READ</option>
+			<option value="catalog:read">COM_DHARMASHOP_MCP_SCOPE_CATALOG_READ</option>
+			<option value="orders:read">COM_DHARMASHOP_MCP_SCOPE_ORDERS_READ</option>
+			<option value="analytics:read">COM_DHARMASHOP_MCP_SCOPE_ANALYTICS_READ</option>
+			<option value="drafts:write">COM_DHARMASHOP_MCP_SCOPE_DRAFTS_WRITE</option>
+			<option value="orders:write">COM_DHARMASHOP_MCP_SCOPE_ORDERS_WRITE</option>
+			<option value="catalog:write">COM_DHARMASHOP_MCP_SCOPE_CATALOG_WRITE</option>
+			<option value="customers:pii">COM_DHARMASHOP_MCP_SCOPE_CUSTOMERS_PII</option>
+			<option value="maintenance:exec">COM_DHARMASHOP_MCP_SCOPE_MAINTENANCE_EXEC</option>
+		</field>
+
+		<field name="expires_at" type="calendar"
+			label="COM_DHARMASHOP_MCP_TOKEN_EXPIRES"
+			description="COM_DHARMASHOP_MCP_TOKEN_EXPIRES_DESC"
+			showtime="true"
+			format="%Y-%m-%d %H:%M:%S"
+			filter="user_utc" />
+	</fieldset>
+</form>
