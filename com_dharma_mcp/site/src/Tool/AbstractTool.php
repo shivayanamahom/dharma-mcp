@@ -45,6 +45,16 @@ abstract class AbstractTool implements ToolInterface
     }
 
     /**
+     * Скрывать ли в ответе значения «персональных» ключей (address, phone, email...). По умолчанию да.
+     * Инструмент отвечает «нет» только когда уверен, что в этом вызове такие ключи — не данные покупателей
+     * (например, адрес и телефон склада магазина).
+     */
+    public function masksPersonalData(array $arguments): bool
+    {
+        return true;
+    }
+
+    /**
      * Схема объекта: свойства и список обязательных.
      *
      * @param   array<string, array>  $properties

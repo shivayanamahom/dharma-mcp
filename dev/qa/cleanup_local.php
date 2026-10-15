@@ -47,6 +47,10 @@ $delete('com_menus', 'Item', '#__menu', 'title', "AND client_id = 0 AND home = 0
 $delete('com_modules', 'Module', '#__modules', 'title', 'AND client_id = 0');
 $delete('com_categories', 'Category', '#__categories', 'title', "AND extension = 'com_content'");
 
+// Статусы заказов и покупатели через сервер не удаляются, поэтому тест их и не создаёт; остатки ручных проверок убираем напрямую.
+$db->setQuery('DELETE FROM #__dharmashop_statuses WHERE title LIKE ' . $db->quote($like))->execute();
+$report['statuses'] = $db->getAffectedRows();
+
 // Файлы шаблона и копии, созданные тестом.
 $site = rtrim(getenv('DHARMA_SITE') ?: '/Volumes/Work/Server/www/test', '/');
 $files = 0;

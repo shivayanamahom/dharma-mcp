@@ -21,6 +21,7 @@ use Dharma\Component\DharmaMcp\Site\Protocol\JsonRpcRequest;
 use Dharma\Component\DharmaMcp\Site\Protocol\JsonRpcResponse;
 use Dharma\Component\DharmaMcp\Site\Support\Confirmations;
 use Dharma\Component\DharmaMcp\Site\Support\PiiMasker;
+use Dharma\Component\DharmaMcp\Site\Tool\AbstractTool;
 use Dharma\Component\DharmaMcp\Site\Tool\Access;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolContext;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
@@ -263,12 +264,12 @@ final class McpServer
                     $payload['note'] = 'The confirm_code you sent was invalid, expired or did not match the arguments.';
                 }
 
-                return $this->okResult($payload, $context);
+                return $this->okResult($payload, $context, $this->masks($tool, $arguments));
             }
         }
 
         try {
-            return $this->okResult($tool->execute($arguments, $context), $context);
+            return $this->okResult($tool->execute($arguments, $context), $context, $this->masks($tool, $arguments));
         } catch (ToolException $e) {
             $status = 'error';
             $errorMessage = $e->getMessage();
@@ -285,9 +286,17 @@ final class McpServer
         }
     }
 
-    private function okResult(array $data, ToolContext $context): array
+    /** Нужно ли маскировать персональные данные в ответе этого инструмента. */
+    private function masks(ToolInterface $tool, array $arguments): bool
     {
-        $data = PiiMasker::maskArray($data, $context->piiAllowed(), $context->maskPii());
+        return !$tool instanceof AbstractTool || $tool->masksPersonalData($arguments);
+    }
+
+    private function okResult(array $data, ToolContext $context, bool $mask = true): array
+    {
+        if ($mask) {
+            $data = PiiMasker::maskArray($data, $context->piiAllowed(), $context->maskPii());
+        }
         $text = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '{}';
 
         if (\strlen($text) > self::MAX_RESPONSE_BYTES) {

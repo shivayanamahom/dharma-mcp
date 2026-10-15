@@ -220,6 +220,29 @@ def run(args):
         read("products.get", {"id": p["id"]}, lambda t: t.get("id") == p["id"])
     elif "products.get" in have:
         skip("products.get", "в магазине нет товаров")
+    ents = read("shop.entities", {}, lambda t: len(t.get("entities", [])) >= 12)
+    if ents:
+        for e in ents["entities"]:
+            key = e["entity"]
+            if e["personal_data"]:
+                # Покупатели: без разрешения персональных данных ответ — отказ с объяснением, и это правильно.
+                err, t = c.call("shop.entity_list", {"entity": key, "limit": 2})
+                check(f"shop.entity_list {key}: список или понятный отказ", ("items" in t) or t.get("error") == "forbidden", json.dumps(t, ensure_ascii=False)[:160])
+                continue
+            read("shop.entity_list", {"entity": key, "limit": 2}, lambda t: "items" in t and "total" in t)
+            read("shop.entities", {"entity": key}, lambda t: len(t.get("fields", [])) >= 3 and all("name" in f and "type" in f for f in t["fields"]))
+        read("shop.entities", {"entity": "product"}, lambda t: any(f["name"] == "title" for f in t.get("fields", [])))
+        err, t = c.call("shop.entity_get", {"entity": "category", "id": 99999999})
+        check("shop.entity_get: несуществующая запись — понятная ошибка", err and t.get("error") == "not_found", json.dumps(t)[:120])
+        err, t = c.call("shop.entity_list", {"entity": "nonsense"})
+        check("shop.entity_list: неизвестная сущность — понятная ошибка", err and t.get("error") == "validation", json.dumps(t)[:120])
+    sets = read("shop.settings", {}, lambda t: "filter" in t.get("sections", {}))
+    if sets:
+        t = read("shop.settings", {"section": "filter"}, lambda t: len(t.get("options", [])) >= 5)
+    sec = read("shop.settings", {"section": "notifications"}, lambda t: "options" in t)
+    if sec:
+        leaked = [o["name"] for o in sec["options"] if o.get("value") not in (None, "", "[hidden]", 0, 1, "0", "1") and any(w in o["name"] for w in ("token", "secret", "password", "api_key"))]
+        check("shop.settings: токены и ключи не показываются", not leaked, ", ".join(leaked))
     cats = read("categories.list", {"limit": 5}, lambda t: "items" in t)
     arts = read("articles.list", {"limit": 3, "state": "all"}, lambda t: "items" in t)
     if arts and arts["items"]:
@@ -406,6 +429,8 @@ def write_flows(c, have, P, created):
             else:
                 check("orders.set_status: без кода возвращает предпросмотр", t.get("status") == "confirmation_required" or err, json.dumps(t)[:150])
 
+    shop_admin_flows(c, have, P)
+
     section("Запись: шаблон")
     if "template.file_write" in have:
         path = "mcp-qa-test.css"
@@ -471,6 +496,163 @@ def write_flows(c, have, P, created):
     if "db.query" in have:
         for tab in created["articles"]:
             pass
+
+
+def tiny_png_base64():
+    import base64
+    import struct
+    import zlib
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    raw = b"".join(b"\x00" + bytes((200, 30, 30)) * 8 for _ in range(8))
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 8, 8, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    return base64.b64encode(png).decode()
+
+
+def shop_admin_flows(c, have, P):
+    """Управление магазином: товары, справочники, настройки, картинки. Всё созданное удаляется в конце."""
+    section("Запись: управление магазином")
+    if "shop.entity_create" not in have:
+        skip("управление магазином", "нет инструментов shop.entity_* (магазин не установлен или нет области shop:write)")
+        return
+    todo = []  # (инструмент, аргументы) для уборки
+
+    def create(entity, data, label):
+        err, t = c.call("shop.entity_create", {"entity": entity, "data": data})
+        if check(f"shop.entity_create {label}: создано снятым с публикации", not err and t.get("created") and t.get("published") is False, json.dumps(t, ensure_ascii=False)[:200]):
+            todo.append({"entity": entity, "id": t["id"], "permanent": True})
+            return t["id"]
+        return None
+
+    def update(entity, rid, data, label, expect=None):
+        prev, err, t = c.confirmed("shop.entity_update", {"entity": entity, "id": rid, "data": data})
+        ok = not err and t.get("updated") and (expect is None or expect(t))
+        check(f"shop.entity_update {label}", ok, json.dumps(t, ensure_ascii=False)[:200])
+        return ok
+
+    def get(entity, rid):
+        err, t = c.call("shop.entity_get", {"entity": entity, "id": rid})
+        return t.get("record", {}) if not err else {}
+
+    try:
+        # --- категории, бренды, бейджи
+        cat = create("category", {"title": f"{P} категория", "description": "<p>QA</p>"}, "category")
+        brand = create("brand", {"title": f"{P} бренд"}, "brand")
+        badge = create("badge", {"title": f"{P} бейдж", "params": {"badge_color": "danger"}}, "badge")
+        if cat:
+            sub = create("category", {"title": f"{P} подкатегория", "parent_id": cat}, "вложенная category")
+            if sub:
+                check("вложенная категория встала под родителя", get("category", sub).get("parent_id") == cat)
+            update("category", cat, {"description": "<p>QA 2</p>"}, "category: описание", lambda t: t.get("changed_fields") == ["description"])
+        if badge:
+            update("badge", badge, {"params": {"badge_color": "success"}}, "badge: вложенный параметр", None)
+            check("badge: цвет изменился, остальное не тронуто", get("badge", badge).get("params", {}).get("badge_color") == "success" and get("badge", badge).get("title") == f"{P} бейдж")
+        if cat and brand:
+            # --- товар
+            err, t = c.call("products.create", {"title": f"{P} товар", "category_id": cat, "brand_id": brand, "sku": "QA-MCP-SKU-1", "price": 1234.5, "unit": "шт",
+                                                "stock_tracked": True, "stock_qty": 5, "intro_text": "<p>QA-INTRO</p>"})
+            pid = t.get("id") if check("products.create: товар создан снятым с публикации", not err and t.get("created") and t.get("published") is False, json.dumps(t, ensure_ascii=False)[:200]) else None
+            if pid:
+                err, g = c.call("products.get", {"id": pid})
+                check("products.get видит созданный товар", not err and g.get("price") == 1234.5 and g.get("category_id") == cat and g.get("brand_id") == brand and g.get("sku") == "QA-MCP-SKU-1" and g.get("stock_qty") == 5, json.dumps(g, ensure_ascii=False)[:240])
+                err, t = c.call("products.create", {"title": f"{P} дубль", "category_id": cat, "sku": "QA-MCP-SKU-1"})
+                check("products.create: повторный артикул отклонён", err and t.get("error") == "validation", json.dumps(t, ensure_ascii=False)[:160])
+                err, t = c.call("products.create", {"title": f"{P} чужая", "category_id": brand})
+                check("products.create: бренд вместо категории отклонён", err and t.get("error") == "validation", json.dumps(t, ensure_ascii=False)[:160])
+                # --- картинка в галерею
+                if "shop.image_upload" in have:
+                    err, up = c.call("shop.image_upload", {"base64": tiny_png_base64(), "filename": "qa-mcp.png", "folder": "products"})
+                    if check("shop.image_upload: картинка загружена", not err and str(up.get("path", "")).startswith("images/"), json.dumps(up)[:160]):
+                        prev, err, t = c.confirmed("products.update", {"id": pid, "gallery": [{"path": up["path"], "alt": "QA картинка"}], "category_id": cat, "badge_ids": [badge] if badge else []})
+                        check("products.update: галерея, категория и бейдж", not err and t.get("updated"), json.dumps(t, ensure_ascii=False)[:160])
+                        err, g = c.call("products.get", {"id": pid})
+                        check("products.get: галерея и обложка на месте", g.get("cover") == up["path"] and len(g.get("gallery", [])) == 1 and g["gallery"][0]["alt"] == "QA картинка", json.dumps(g, ensure_ascii=False)[:200])
+                    err, bad = c.call("shop.image_upload", {"base64": "PD9waHAgZWNobyAxOw==", "filename": "x.png"})
+                    check("shop.image_upload: файл не-картинка отклонён", err and bad.get("error") == "validation", json.dumps(bad)[:120])
+                    err, bad = c.call("shop.image_upload", {"url": "https://127.0.0.1/a.png"})
+                    check("shop.image_upload: адрес внутренней сети отклонён", err and bad.get("error") == "validation", json.dumps(bad)[:120])
+                    err, bad = c.call("shop.image_upload", {"url": "http://example.com/a.png"})
+                    check("shop.image_upload: адрес без https отклонён", err and bad.get("error") == "validation", json.dumps(bad)[:120])
+                # --- публикация и удаление
+                prev, err, t = c.confirmed("products.update", {"id": pid, "published": True})
+                check("products.update: публикация", not err and t.get("product", {}).get("published") is True, json.dumps(t)[:140])
+                prev, err, t = c.confirmed("products.delete", {"id": pid})
+                check("products.delete: товар в корзине, подтверждение обязательно", prev is not None and not err and t.get("trashed") is True, json.dumps(t)[:140])
+                err, g = c.call("products.search", {"search": f"{P} товар", "state": "all"})
+                check("products.search: корзина не показывается как опубликованное", all(i.get("published") is not True for i in g.get("items", [])), json.dumps(g, ensure_ascii=False)[:160])
+                prev, err, t = c.confirmed("products.delete", {"id": pid, "permanent": True})
+                check("products.delete: удалён насовсем", not err and t.get("deleted") is True, json.dumps(t)[:140])
+                err, g = c.call("products.get", {"id": pid})
+                check("products.get: после удаления товара нет", err and g.get("error") == "not_found", json.dumps(g)[:120])
+        # --- склад, поля, группа полей
+        wh = create("warehouse", {"title": f"{P} склад", "address": "Москва, Тестовая, 1", "coords": "55.75, 37.62"}, "warehouse")
+        if wh:
+            update("warehouse", wh, {"hours": "10:00-20:00"}, "warehouse: часы работы")
+            w = get("warehouse", wh)
+            check("warehouse: адрес склада виден (не маскируется как данные покупателя)", w.get("address") == "Москва, Тестовая, 1" and w.get("hours") == "10:00-20:00", json.dumps(w, ensure_ascii=False)[:160])
+            err, bad = c.call("shop.entity_create", {"entity": "warehouse", "data": {"title": f"{P} плохой", "coords": "не координаты"}})
+            check("warehouse: неверные координаты отклонены понятной ошибкой", err and bad.get("error") == "validation", json.dumps(bad, ensure_ascii=False)[:160])
+        grp = create("field_group", {"title": f"{P} группа полей", "target": "product", "tab_mode": "group"}, "field_group")
+        fld = create("field", {"title": f"{P} цвет", "target": "product", "type": "list", "group_id": grp or 0, "filterable": 1,
+                               "options": [{"title": "Красный"}, {"title": "Синий"}], "params": {"filter": {"control": "checkboxes", "limit": 10}}}, "field (фильтр настраивается в поле)")
+        if fld:
+            rec = get("field", fld)
+            check("field: варианты выбора сохранены", [o.get("title") for o in rec.get("options", [])] == ["Красный", "Синий"], json.dumps(rec.get("options"), ensure_ascii=False)[:160])
+            update("field", fld, {"params": {"filter": {"limit": 5}}}, "field: параметр фильтра")
+            check("field: параметр фильтра изменился, остальные настройки целы", get("field", fld).get("params", {}).get("filter", {}).get("limit") == 5 and get("field", fld).get("params", {}).get("filter", {}).get("control") == "checkboxes")
+        # --- доставка, оплата, акции, посадочная страница
+        ship = None
+        if wh:
+            ship = create("shipping_method", {"title": f"{P} самовывоз", "plugin": "pickup", "params": {"pickup": {"term": "1 день", "price": "0", "warehouses": [wh]}}}, "shipping_method")
+        if ship:
+            update("shipping_method", ship, {"params": {"pickup": {"price": "150"}}}, "shipping_method: цена")
+        err, bad = c.call("shop.entity_create", {"entity": "shipping_method", "data": {"title": f"{P} без склада", "plugin": "pickup"}})
+        check("shipping_method: самовывоз без склада отклонён понятной ошибкой", err and bad.get("error") == "validation", json.dumps(bad, ensure_ascii=False)[:160])
+        pay = create("payment_method", {"title": f"{P} оплата", "plugin": "standard", "params": {"standard": {"instruction": "Переведите на карту"}}}, "payment_method")
+        promo = create("promotion", {"title": f"{P} акция", "plugin": "coupon", "params": {"coupons": [{"code": "QAMCP10", "discount_type": "percent", "discount_value": 10}]}}, "promotion (промокод)")
+        if promo:
+            update("promotion", promo, {"params": {"coupons": [{"code": "QAMCP10", "discount_type": "percent", "discount_value": 10}, {"code": "QAMCP500", "discount_type": "amount", "discount_value": 500, "minimum_subtotal": 3000}]}}, "promotion: второй промокод")
+            codes = [x.get("code") for x in get("promotion", promo).get("params", {}).get("coupons", [])]
+            check("promotion: оба промокода сохранены", codes == ["QAMCP10", "QAMCP500"], str(codes))
+        if "landing_page" in [e.get("entity") for e in (c.call("shop.entities", {})[1].get("entities", []))]:
+            err, probe = c.call("shop.entity_list", {"entity": "landing_page", "limit": 1})
+            if not err:
+                land = create("landing_page", {"title": f"{P} подборка", "source": "filter", "cond_price_max": "3000"}, "landing_page")
+                if land:
+                    update("landing_page", land, {"meta_title": "QA", "cond_sale": 1}, "landing_page: SEO и условие")
+            else:
+                skip("landing_page", "компонент посадочных страниц не установлен")
+        # --- нельзя
+        err, t = c.call("shop.entity_delete", {"entity": "order_status", "id": 1})
+        check("order_status: удалить нельзя, объяснение понятное", err and t.get("error") == "validation" and "cannot be deleted" in t.get("message", ""), json.dumps(t)[:140])
+        # --- настройки магазина
+        err, cur = c.call("shop.settings", {"section": "filter"})
+        opt = next((o for o in cur.get("options", []) if o["name"] == "filter_cache_minutes"), None) if not err else None
+        if opt is not None:
+            old = opt["value"]
+            new = 11 if old != 11 else 12
+            prev, err, t = c.confirmed("shop.settings_set", {"options": {"filter_cache_minutes": new}})
+            check("shop.settings_set: настройка изменена", not err and t.get("updated"), json.dumps(t)[:140])
+            err, cur2 = c.call("shop.settings", {"section": "filter"})
+            check("shop.settings: новое значение прочитано", next(o for o in cur2["options"] if o["name"] == "filter_cache_minutes")["value"] == new)
+            c.confirmed("shop.settings_set", {"options": {"filter_cache_minutes": old}})
+            err, t = c.call("shop.settings_set", {"options": {"no_such_option": 1}})
+            check("shop.settings_set: неизвестная настройка отклонена", err and t.get("error") == "validation", json.dumps(t)[:140])
+    finally:
+        # Уборка в обратном порядке: сначала зависимое (поле, затем группа полей, затем категории).
+        for args in reversed(todo):
+            prev, err, t = c.confirmed("shop.entity_delete", args)
+            if err:
+                print(f"  ! не удалось убрать {args['entity']} {args['id']}: {json.dumps(t, ensure_ascii=False)[:120]}")
+        left = []
+        for args in todo:
+            err, t = c.call("shop.entity_get", {"entity": args["entity"], "id": args["id"]})
+            if not err:
+                left.append(f"{args['entity']}:{args['id']}")
+        check("всё созданное управлением магазином удалено", not left, ", ".join(left))
 
 
 def main():
