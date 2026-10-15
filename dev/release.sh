@@ -69,7 +69,12 @@ if [ "$PUBLISH" -eq 0 ]; then
   write_update_xml
   echo "--- updates/pkg_dharma_mcp.xml (сухой прогон, не публикуется) ---"
   cat updates/pkg_dharma_mcp.xml
-  git checkout -- updates 2>/dev/null || true
+  # Сухой прогон ничего не оставляет: файл возвращается к закоммиченному виду или удаляется.
+  if git ls-files --error-unmatch updates/pkg_dharma_mcp.xml >/dev/null 2>&1; then
+    git checkout -- updates
+  else
+    rm -rf updates
+  fi
   echo "Для публикации: dev/release.sh --publish"
   exit 0
 fi
