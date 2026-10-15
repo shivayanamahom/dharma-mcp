@@ -5,7 +5,7 @@
 	<author>Dharma</author>
 	<copyright>(C) 2026 Dharma. Все права защищены.</copyright>
 	<license>GNU General Public License версии 2 или новее; см. LICENSE.txt</license>
-	<version>0.2.0</version>
+	<version>0.3.0</version>
 	<description>COM_DHARMA_MCP_XML_DESCRIPTION</description>
 	<namespace path="src">Dharma\Component\DharmaMcp</namespace>
 
@@ -14,6 +14,11 @@
 			<file driver="mysql" charset="utf8">sql/install.mysql.utf8.sql</file>
 		</sql>
 	</install>
+	<update>
+		<schemas>
+			<schemapath type="mysql">sql/updates/mysql</schemapath>
+		</schemas>
+	</update>
 	<uninstall>
 		<sql>
 			<file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8.sql</file>
@@ -24,6 +29,7 @@
 		<folder>language</folder>
 		<folder>services</folder>
 		<folder>src</folder>
+		<folder>tmpl</folder>
 	</files>
 
 	<languages folder="site">

@@ -26,6 +26,23 @@
 			<option value="full_write">COM_DHARMA_MCP_MODE_FULL_WRITE</option>
 		</field>
 
+		<field name="oauth_enabled" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_CONFIG_OAUTH_ENABLED"
+			description="COM_DHARMA_MCP_CONFIG_OAUTH_ENABLED_DESC"
+			default="1">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+
+		<field name="oauth_registration" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_CONFIG_OAUTH_REGISTRATION"
+			description="COM_DHARMA_MCP_CONFIG_OAUTH_REGISTRATION_DESC"
+			default="1"
+			showon="oauth_enabled:1">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+
 		<field name="pii_enabled" type="radio" layout="joomla.form.field.radio.switcher"
 			label="COM_DHARMA_MCP_CONFIG_PII_ENABLED"
 			description="COM_DHARMA_MCP_CONFIG_PII_ENABLED_DESC"

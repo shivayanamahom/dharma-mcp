@@ -12,12 +12,10 @@ declare(strict_types=1);
 \defined('_JEXEC') or die;
 
 use Dharma\Component\DharmaMcp\Administrator\Extension\McpComponent;
-use Joomla\CMS\Component\Router\RouterFactoryInterface;
 use Joomla\CMS\Dispatcher\ComponentDispatcherFactoryInterface;
 use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\Extension\Service\Provider\ComponentDispatcherFactory;
 use Joomla\CMS\Extension\Service\Provider\MVCFactory;
-use Joomla\CMS\Extension\Service\Provider\RouterFactory;
 use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
@@ -27,14 +25,12 @@ return new class () implements ServiceProviderInterface {
     {
         $container->registerServiceProvider(new MVCFactory('\\Dharma\\Component\\DharmaMcp'));
         $container->registerServiceProvider(new ComponentDispatcherFactory('\\Dharma\\Component\\DharmaMcp'));
-        $container->registerServiceProvider(new RouterFactory('\\Dharma\\Component\\DharmaMcp'));
 
         $container->set(
             ComponentInterface::class,
             static function (Container $c): McpComponent {
                 $component = new McpComponent($c->get(ComponentDispatcherFactoryInterface::class));
                 $component->setMVCFactory($c->get(MVCFactoryInterface::class));
-                $component->setRouterFactory($c->get(RouterFactoryInterface::class));
 
                 return $component;
             }

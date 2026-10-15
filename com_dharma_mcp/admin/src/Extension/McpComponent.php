@@ -14,11 +14,12 @@ namespace Dharma\Component\DharmaMcp\Administrator\Extension;
 
 \defined('_JEXEC') or die;
 
-use Joomla\CMS\Component\Router\RouterServiceInterface;
-use Joomla\CMS\Component\Router\RouterServiceTrait;
 use Joomla\CMS\Extension\MVCComponent;
 
-final class McpComponent extends MVCComponent implements RouterServiceInterface
+/**
+ * Компонент MCP. Собственного маршрутизатора нет: адреса — index.php?option=com_dharma_mcp... и короткие
+ * адреса системного плагина; штатная маршрутизация Joomla для них достаточна.
+ */
+final class McpComponent extends MVCComponent
 {
-    use RouterServiceTrait;
 }

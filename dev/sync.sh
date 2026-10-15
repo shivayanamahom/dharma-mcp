@@ -16,9 +16,11 @@ for l in ru-RU en-GB; do
   cp "$C/site/language/$l/com_dharma_mcp.ini" "$T/language/$l/com_dharma_mcp.ini"
 done
 
-for P in "$S"/plg_dharmamcp_*; do
-  EL="${P##*plg_dharmamcp_}"
-  D="$T/plugins/dharmamcp/$EL"
+for P in "$S"/plg_*; do
+  NAME="$(basename "$P")"             # plg_<группа>_<элемент>
+  GROUP="$(cut -d_ -f2 <<< "$NAME")"
+  EL="${NAME#plg_${GROUP}_}"
+  D="$T/plugins/$GROUP/$EL"
   mkdir -p "$D"
   for d in services src language; do $R "$P/$d/" "$D/$d/"; done
   cp "$P/$EL.xml" "$D/"

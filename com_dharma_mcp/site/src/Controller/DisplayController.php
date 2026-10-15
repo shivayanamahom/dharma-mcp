@@ -16,6 +16,7 @@ namespace Dharma\Component\DharmaMcp\Site\Controller;
 
 use Dharma\Component\DharmaMcp\Site\Audit\AuditLogger;
 use Dharma\Component\DharmaMcp\Site\Auth\TokenAuthenticator;
+use Dharma\Component\DharmaMcp\Site\Oauth\OauthServer;
 use Dharma\Component\DharmaMcp\Site\Protocol\JsonRpcError;
 use Dharma\Component\DharmaMcp\Site\Protocol\JsonRpcRequest;
 use Dharma\Component\DharmaMcp\Site\Protocol\JsonRpcResponse;
@@ -36,9 +37,29 @@ class DisplayController extends BaseController
 {
     public function display($cachable = false, $urlparams = [])
     {
+        // Страница согласия OAuth — обычный HTML-вид Joomla, остальное — JSON-эндпоинт MCP.
+        if ($this->input->get('view') === 'authorize') {
+            return parent::display($cachable, $urlparams);
+        }
+
+        // Ответ — строго JSON. Предупреждения PHP и любой посторонний вывод (расширения, display_errors хостинга)
+        // не должны попасть в тело: показ ошибок выключаем, вывод собираем в буфер и отбрасываем при отправке.
+        @ini_set('display_errors', '0');
+        ob_start();
+        $this->bufferLevel = ob_get_level();
+
         $app = $this->app;
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $params = ComponentHelper::getParams('com_dharma_mcp');
+
+        // CORS: браузерным клиентам MCP (например, MCP Inspector) нужны предзапрос и видимость WWW-Authenticate.
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, MCP-Protocol-Version, Mcp-Session-Id');
+        header('Access-Control-Expose-Headers: WWW-Authenticate');
+        if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) === 'OPTIONS') {
+            $this->send(204, null);
+        }
 
         if ((int) $params->get('enabled', 1) !== 1) {
             $this->send(503, JsonRpcResponse::error(null, new JsonRpcError(JsonRpcError::INTERNAL_ERROR, 'MCP server is disabled')));
@@ -65,7 +86,12 @@ class DisplayController extends BaseController
         if (!$auth->success) {
             $code = $auth->errorCode > 0 ? $auth->errorCode : 401;
             if ($code === 401) {
-                header('WWW-Authenticate: Bearer');
+                // Клиентам MCP: где искать настройки авторизации (RFC 9728), чтобы начать вход через OAuth.
+                $challenge = 'Bearer';
+                if ((int) $params->get('oauth_enabled', 1) === 1) {
+                    $challenge .= ' resource_metadata="' . OauthServer::resourceMetadataUrl() . '"';
+                }
+                header('WWW-Authenticate: ' . $challenge);
             }
             $this->send(
                 $code,
@@ -88,6 +114,7 @@ class DisplayController extends BaseController
         $logger = new AuditLogger($db);
         if (random_int(1, 100) === 1) {
             $logger->purge((int) $params->get('log_retention_days', 90));
+            (new OauthServer($db))->purge();
         }
 
         $server = new McpServer(ToolRegistry::build($app), $logger, new Confirmations($db), $params, $db, $app);
@@ -119,15 +146,28 @@ class DisplayController extends BaseController
             $this->send(200, $responses[0]);
         }
 
+        $this->discardStrayOutput();
         http_response_code(200);
         header('Content-Type: application/json; charset=utf-8');
         echo '[' . implode(',', array_map(static fn (JsonRpcResponse $r): string => $r->toJson(), $responses)) . ']';
         $app->close();
     }
 
+    /** Уровень буфера вывода, открытый контроллером. */
+    private int $bufferLevel = 0;
+
+    /** Отбрасывает всё, что кроме нашего ответа попало в вывод (предупреждения, HTML расширений). */
+    private function discardStrayOutput(): void
+    {
+        while ($this->bufferLevel > 0 && ob_get_level() >= $this->bufferLevel) {
+            ob_end_clean();
+        }
+    }
+
     /** Отправляет ответ с настоящим HTTP-кодом и завершает приложение. */
     private function send(int $httpCode, ?JsonRpcResponse $response): never
     {
+        $this->discardStrayOutput();
         http_response_code($httpCode);
         header('Cache-Control: no-store');
         if ($response !== null) {

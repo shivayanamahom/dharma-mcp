@@ -23,7 +23,7 @@ return new class () implements InstallerScriptInterface {
      * Наборы, включаемые при первой установке. «Шаблон» и «Система» дают доступ к файлам и настройкам сайта,
      * поэтому остаются выключенными: их включает администратор осознанно (Плагины → группа dharmamcp).
      */
-    private const ENABLE_ON_INSTALL = ['shop', 'content'];
+    private const ENABLE_ON_INSTALL = [['system', 'dharmamcp'], ['dharmamcp', 'shop'], ['dharmamcp', 'content']];
 
     public function install(InstallerAdapter $adapter): bool
     {
@@ -67,7 +67,7 @@ return new class () implements InstallerScriptInterface {
                 ->where($db->quoteName('type') . ' = ' . $db->quote('component'))
         )->loadResult() > 0;
 
-        foreach (self::ENABLE_ON_INSTALL as $element) {
+        foreach (self::ENABLE_ON_INSTALL as [$folder, $element]) {
             if ($element === 'shop' && !$shopInstalled) {
                 continue;
             }
@@ -76,8 +76,9 @@ return new class () implements InstallerScriptInterface {
                 ->update($db->quoteName('#__extensions'))
                 ->set($db->quoteName('enabled') . ' = 1')
                 ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-                ->where($db->quoteName('folder') . ' = ' . $db->quote('dharmamcp'))
+                ->where($db->quoteName('folder') . ' = :folder')
                 ->where($db->quoteName('element') . ' = :element')
+                ->bind(':folder', $folder, ParameterType::STRING)
                 ->bind(':element', $element, ParameterType::STRING);
             $db->setQuery($query)->execute();
         }

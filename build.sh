@@ -15,7 +15,7 @@ echo "Dharma MCP $VERSION: проверка синтаксиса PHP..."
 FAILED=0
 while IFS= read -r -d '' f; do
   "$PHP_BIN" -l "$f" >/dev/null 2>&1 || { echo "  ОШИБКА: $f"; FAILED=1; }
-done < <(find "$ROOT/com_dharma_mcp" "$ROOT"/plg_dharmamcp_* "$ROOT/pkg" -name '*.php' -print0)
+done < <(find "$ROOT/com_dharma_mcp" "$ROOT"/plg_* "$ROOT/pkg" -name '*.php' -print0)
 [ "$FAILED" -eq 0 ] || { echo "Сборка остановлена: есть синтаксические ошибки."; exit 1; }
 
 rm -rf "$DIST"; mkdir -p "$DIST" "$STAGE/pkg"
@@ -25,7 +25,7 @@ zip_dir() { # <каталог> <имя zip>
 }
 
 zip_dir "$ROOT/com_dharma_mcp" com_dharma_mcp.zip
-for p in "$ROOT"/plg_dharmamcp_*; do
+for p in "$ROOT"/plg_*; do
   zip_dir "$p" "$(basename "$p").zip"
 done
 
