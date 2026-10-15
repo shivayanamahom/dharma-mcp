@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<updates>
+	<update>
+		<name>Dharma MCP</name>
+		<description>MCP-сервер для сайта на Joomla: магазин, материалы, меню, модули, шаблон и настройки через ИИ-ассистента.</description>
+		<element>pkg_dharma_mcp</element>
+		<type>package</type>
+		<version>0.3.0</version>
+		<infourl title="Dharma MCP 0.3.0">https://github.com/shivayanamahom/dharma-mcp/releases/tag/v0.3.0</infourl>
+		<downloads>
+			<downloadurl type="full" format="zip">https://github.com/shivayanamahom/dharma-mcp/releases/download/v0.3.0/pkg_dharma_mcp-0.3.0.zip</downloadurl>
+		</downloads>
+		<sha256>96f104163fe708c279a7e395b15fe66a2fc94e55aac102f6fcfe41517ecd5e5c</sha256>
+		<tags>
+			<tag>stable</tag>
+		</tags>
+		<maintainer>Dharma</maintainer>
+		<maintainerurl>https://github.com/shivayanamahom/dharma-mcp</maintainerurl>
+		<targetplatform name="joomla" version="((5\.[4-9])|(6\.[0-9]+))" />
+		<php_minimum>8.3</php_minimum>
+	</update>
+</updates>
