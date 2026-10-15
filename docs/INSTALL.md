@@ -90,7 +90,21 @@ RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
 Сервер читает `HTTP_AUTHORIZATION`, `REDIRECT_HTTP_AUTHORIZATION` и `apache_request_headers()`.
 
-**ЧПУ.** Короткие адреса `/mcp`, `/oauth/*` и `/.well-known/*` обслуживает системный плагин «Dharma MCP (адреса)»; для них нужны включённые «Использовать перезапись адресов» и рабочий `.htaccess` Joomla. Без этого всё работает по адресам `index.php?option=com_dharma_mcp…`, но клиентам OAuth сложнее найти настройки.
+**Адреса `/mcp` и OAuth на nginx (и вообще без перезаписи адресов).** Короткие адреса `/mcp`, `/oauth/*` и `/.well-known/*` обслуживает системный плагин «Dharma MCP (адреса)», но запрос должен дойти до Joomla. Это зависит от сервера:
+
+- **Apache:** достаточно штатного `.htaccess` Joomla (файл `htaccess.txt` нужно переименовать в `.htaccess`) и включённой перезаписи адресов.
+- **nginx без перезаписи** (признак: страницы вашего сайта выглядят как `/index.php/...`, а `/mcp` отвечает 404 от nginx): адрес `https://ваш-сайт/index.php/mcp` работает сразу, для токенов этого достаточно. Для **OAuth (Claude, ChatGPT)** клиенты ищут настройки по адресам в корне сайта, поэтому добавьте в блок `server {}` конфигурации nginx (до `location ~ \.php$`):
+
+```nginx
+location = /mcp { rewrite ^ /index.php/mcp last; }
+location ^~ /oauth/ { rewrite ^/oauth/(.*)$ /index.php/oauth/$1 last; }
+location ^~ /.well-known/oauth- { rewrite ^(.*)$ /index.php$1 last; }
+location = /.well-known/openid-configuration { rewrite ^ /index.php/.well-known/openid-configuration last; }
+```
+
+Перезапись адресов Joomla (Глобальная конфигурация → «Использовать перезапись адресов») при этом можно не включать. Если хотите включить её для всего сайта, нужна общая строка `location / { try_files $uri $uri/ /index.php?$args; }`. На панелях хостинга эти правила обычно добавляют в «дополнительные директивы nginx» сайта или просят у поддержки.
+
+Проверка: `curl -i https://ваш-сайт/.well-known/oauth-authorization-server` должен вернуть 200 и JSON.
 
 **Прокси и CDN.** Если сайт за прокси, который завершает HTTPS, Joomla может считать соединение небезопасным. Тогда сервер откажет по HTTPS-проверке. Настройте передачу схемы (`X-Forwarded-Proto`) либо временно отключите «Требовать HTTPS» (не рекомендуется для рабочего сайта).
 
@@ -128,4 +142,4 @@ curl -s https://ваш-сайт/.well-known/oauth-protected-resource
 | В списке нет ожидаемых инструментов | набор выключен (Плагины → dharmamcp), у токена нет нужной области, или режим «только чтение» |
 | Инструмент отвечает `confirmation_required` | это двухэтапное подтверждение: покажите предпросмотр пользователю и повторите вызов с кодом |
 | «The Joomla user of this token is not allowed…» | у пользователя токена нет права Joomla на это действие |
-| `/mcp` даёт 404 | выключен системный плагин адресов или не работает перезапись адресов; используйте длинный адрес |
+| `/mcp` даёт 404 | выключен системный плагин адресов или запрос не доходит до Joomla (nginx без перезаписи): используйте `/index.php/mcp` и правила nginx из раздела 7 |

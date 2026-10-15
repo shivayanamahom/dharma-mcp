@@ -62,7 +62,11 @@ final class DharmaMcp extends CMSPlugin implements SubscriberInterface
         $path = '/' . trim((string) preg_replace('#^/index\.php#', '', $path), '/');
 
         // Метаданные допускают суффикс с путём ресурса: /.well-known/oauth-protected-resource/mcp
-        $path = (string) preg_replace('#^(/\.well-known/[a-z\-]+)/.+$#', '$1', $path);
+        $resourcePath = '';
+        if (preg_match('#^(/\.well-known/[a-z\-]+)(/.+)$#', $path, $m)) {
+            $path = $m[1];
+            $resourcePath = $m[2];
+        }
 
         if ($path === '/oauth/authorize') {
             $app->redirect(Uri::root() . 'index.php?option=com_dharma_mcp&view=authorize&' . (string) ($_SERVER['QUERY_STRING'] ?? ''), 302);
@@ -77,6 +81,9 @@ final class DharmaMcp extends CMSPlugin implements SubscriberInterface
         [$controller, $task] = self::ROUTES[$path];
         $input = $app->getInput();
         $input->set('option', 'com_dharma_mcp');
+        if ($resourcePath !== '') {
+            $input->set('r', $resourcePath);
+        }
 
         // Штатный диспетчер определяет эти константы перед созданием контроллера; мы его обходим.
         foreach ([

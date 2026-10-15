@@ -58,13 +58,36 @@ final class OauthServer
         return rtrim(Uri::root(), '/');
     }
 
-    /** Адрес MCP-сервера: «красивый» /mcp, если включён системный плагин и ЧПУ, иначе обычный. */
+    /** Адрес MCP-сервера по умолчанию: короткий (с системным плагином) или обычный. */
     public static function mcpUrl(): string
     {
-        $app = Factory::getApplication();
-        $pretty = (bool) $app->get('sef_rewrite') && \Joomla\CMS\Plugin\PluginHelper::isEnabled('system', 'dharmamcp');
+        if (!\Joomla\CMS\Plugin\PluginHelper::isEnabled('system', 'dharmamcp')) {
+            return self::issuer() . '/index.php?option=com_dharma_mcp&format=json';
+        }
 
-        return $pretty ? self::issuer() . '/mcp' : self::issuer() . '/index.php?option=com_dharma_mcp&format=json';
+        // Без перезаписи адресов (например, nginx без try_files) короткий адрес работает через /index.php/mcp.
+        return self::issuer() . ((bool) Factory::getApplication()->get('sef_rewrite') ? '/mcp' : '/index.php/mcp');
+    }
+
+    /**
+     * Какой короткий адрес MCP использовал клиент в этом запросе: «/mcp», «/index.php/mcp» или пусто (обычный адрес).
+     * Нужен, чтобы метаданные называли ресурсом ровно тот адрес, который ввёл пользователь.
+     */
+    public static function requestedMcpPath(): string
+    {
+        $path = rawurldecode((string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: ''));
+        $base = Uri::base(true);
+        if ($base !== '' && str_starts_with($path, $base)) {
+            $path = substr($path, \strlen($base));
+        }
+
+        return preg_match('#^(/index\.php)?/mcp$#', rtrim($path, '/')) ? rtrim($path, '/') : '';
+    }
+
+    /** Адрес ресурса для метаданных: запрошенный клиентом короткий адрес, если он допустим, иначе адрес по умолчанию. */
+    public static function resourceUrl(string $path = ''): string
+    {
+        return preg_match('#^(/index\.php)?/mcp$#', $path) === 1 ? self::issuer() . $path : self::mcpUrl();
     }
 
     public static function endpoint(string $task): string
@@ -78,10 +101,10 @@ final class OauthServer
     }
 
     /** Метаданные защищённого ресурса (RFC 9728). */
-    public static function resourceMetadata(): array
+    public static function resourceMetadata(string $path = ''): array
     {
         return [
-            'resource' => self::mcpUrl(),
+            'resource' => self::resourceUrl($path),
             'authorization_servers' => [self::issuer()],
             'scopes_supported' => array_keys(self::SCOPES),
             'bearer_methods_supported' => ['header'],
@@ -105,10 +128,15 @@ final class OauthServer
         ];
     }
 
-    /** Адрес метаданных ресурса для заголовка WWW-Authenticate. */
-    public static function resourceMetadataUrl(): string
+    /** Адрес метаданных ресурса для заголовка WWW-Authenticate; $path — короткий адрес, которым пользуется клиент. */
+    public static function resourceMetadataUrl(string $path = ''): string
     {
-        return self::endpoint('resource');
+        // Системный плагин отдаёт метаданные прямо по /index.php/.well-known/...: без редиректа Joomla и без перезаписи адресов.
+        if (\Joomla\CMS\Plugin\PluginHelper::isEnabled('system', 'dharmamcp')) {
+            return self::issuer() . '/index.php/.well-known/oauth-protected-resource' . (preg_match('#^(/index\.php)?/mcp$#', $path) === 1 ? $path : '');
+        }
+
+        return self::endpoint('resource') . ($path !== '' ? '&r=' . rawurlencode($path) : '');
     }
 
     // ---- Клиенты ---------------------------------------------------------------------------------------------------

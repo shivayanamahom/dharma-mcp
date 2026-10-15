@@ -38,7 +38,7 @@ class OauthController extends BaseController
     public function resource(): void
     {
         $this->guard();
-        $this->json(200, OauthServer::resourceMetadata());
+        $this->json(200, OauthServer::resourceMetadata((string) $this->input->getString('r', '')));
     }
 
     /** Метаданные сервера авторизации (RFC 8414). */

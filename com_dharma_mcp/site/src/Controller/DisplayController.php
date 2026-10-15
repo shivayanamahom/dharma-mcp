@@ -92,7 +92,7 @@ class DisplayController extends BaseController
                 // Клиентам MCP: где искать настройки авторизации (RFC 9728), чтобы начать вход через OAuth.
                 $challenge = 'Bearer';
                 if ((int) $params->get('oauth_enabled', 1) === 1) {
-                    $challenge .= ' resource_metadata="' . OauthServer::resourceMetadataUrl() . '"';
+                    $challenge .= ' resource_metadata="' . OauthServer::resourceMetadataUrl(OauthServer::requestedMcpPath()) . '"';
                 }
                 header('WWW-Authenticate: ' . $challenge);
             }

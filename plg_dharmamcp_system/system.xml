@@ -5,7 +5,7 @@
 	<author>Dharma</author>
 	<copyright>(C) 2026 Dharma. Все права защищены.</copyright>
 	<license>GNU General Public License версии 2 или новее; см. LICENSE.txt</license>
-	<version>0.3.1</version>
+	<version>0.3.2</version>
 	<description>PLG_DHARMAMCP_SYSTEM_XML_DESCRIPTION</description>
 	<namespace path="src">Dharma\Plugin\DharmaMcp\System</namespace>
 	<files>
