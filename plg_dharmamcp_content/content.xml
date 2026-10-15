@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="dharmamcp" method="upgrade">
+	<name>PLG_DHARMAMCP_CONTENT</name>
+	<creationDate>2026-10</creationDate>
+	<author>Dharma</author>
+	<copyright>(C) 2026 Dharma. Все права защищены.</copyright>
+	<license>GNU General Public License версии 2 или новее; см. LICENSE.txt</license>
+	<version>0.2.0</version>
+	<description>PLG_DHARMAMCP_CONTENT_XML_DESCRIPTION</description>
+	<namespace path="src">Dharma\Plugin\DharmaMcp\Content</namespace>
+	<files>
+		<folder>language</folder>
+		<folder plugin="content">services</folder>
+		<folder>src</folder>
+	</files>
+</extension>

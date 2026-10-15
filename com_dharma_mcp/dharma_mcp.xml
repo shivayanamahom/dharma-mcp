@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="component" version="6.0" method="upgrade">
+	<name>COM_DHARMA_MCP</name>
+	<creationDate>2026-10</creationDate>
+	<author>Dharma</author>
+	<copyright>(C) 2026 Dharma. Все права защищены.</copyright>
+	<license>GNU General Public License версии 2 или новее; см. LICENSE.txt</license>
+	<version>0.2.0</version>
+	<description>COM_DHARMA_MCP_XML_DESCRIPTION</description>
+	<namespace path="src">Dharma\Component\DharmaMcp</namespace>
+
+	<install>
+		<sql>
+			<file driver="mysql" charset="utf8">sql/install.mysql.utf8.sql</file>
+		</sql>
+	</install>
+	<uninstall>
+		<sql>
+			<file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8.sql</file>
+		</sql>
+	</uninstall>
+
+	<files folder="site">
+		<folder>language</folder>
+		<folder>services</folder>
+		<folder>src</folder>
+	</files>
+
+	<languages folder="site">
+		<language tag="ru-RU">language/ru-RU/com_dharma_mcp.ini</language>
+		<language tag="en-GB">language/en-GB/com_dharma_mcp.ini</language>
+	</languages>
+
+	<administration>
+		<menu link="option=com_dharma_mcp&amp;view=tokens">COM_DHARMA_MCP</menu>
+		<submenu>
+			<menu link="option=com_dharma_mcp&amp;view=tokens" view="tokens">COM_DHARMA_MCP_MENU_TOKENS</menu>
+			<menu link="option=com_dharma_mcp&amp;view=logs" view="logs">COM_DHARMA_MCP_MENU_LOGS</menu>
+			<menu link="option=com_config&amp;view=component&amp;component=com_dharma_mcp">COM_DHARMA_MCP_MENU_SETTINGS</menu>
+		</submenu>
+		<files folder="admin">
+			<filename>access.xml</filename>
+			<filename>config.xml</filename>
+			<folder>forms</folder>
+			<folder>language</folder>
+			<folder>services</folder>
+			<folder>sql</folder>
+			<folder>src</folder>
+			<folder>tmpl</folder>
+		</files>
+		<languages folder="admin">
+			<language tag="en-GB">language/en-GB/com_dharma_mcp.ini</language>
+			<language tag="en-GB">language/en-GB/com_dharma_mcp.sys.ini</language>
+			<language tag="ru-RU">language/ru-RU/com_dharma_mcp.ini</language>
+			<language tag="ru-RU">language/ru-RU/com_dharma_mcp.sys.ini</language>
+		</languages>
+	</administration>
+</extension>

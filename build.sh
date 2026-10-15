@@ -1,27 +1,38 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# Сборка установочного пакета pkg_dharma_mcp-<версия>.zip (вложенные zip: компонент + плагины-наборы).
+# Версия берётся из pkg/pkg_dharma_mcp.xml. Результат — dist/. Перед сборкой проверяется синтаксис всех PHP.
+set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DIST_DIR="$PROJECT_DIR/dist"
-STAGE_DIR="$PROJECT_DIR/stage"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DIST="$ROOT/dist"
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
 
-VERSION="0.1.0"
-ZIP_NAME="com_dharmashop_mcp-$VERSION.zip"
+PHP_BIN="${PHP_BIN:-$(command -v php || echo /Applications/ServBay/package/php/8.4/current/bin/php)}"
+VERSION="$(sed -n 's|.*<version>\(.*\)</version>.*|\1|p' "$ROOT/pkg/pkg_dharma_mcp.xml" | head -1)"
 
-rm -rf "$DIST_DIR" "$STAGE_DIR"
-mkdir -p "$DIST_DIR" "$STAGE_DIR"
+echo "Dharma MCP $VERSION: проверка синтаксиса PHP..."
+FAILED=0
+while IFS= read -r -d '' f; do
+  "$PHP_BIN" -l "$f" >/dev/null 2>&1 || { echo "  ОШИБКА: $f"; FAILED=1; }
+done < <(find "$ROOT/com_dharma_mcp" "$ROOT"/plg_dharmamcp_* "$ROOT/pkg" -name '*.php' -print0)
+[ "$FAILED" -eq 0 ] || { echo "Сборка остановлена: есть синтаксические ошибки."; exit 1; }
 
-echo "Building com_dharmashop_mcp v$VERSION..."
+rm -rf "$DIST"; mkdir -p "$DIST" "$STAGE/pkg"
 
-cp -R "$PROJECT_DIR/com_dharmashop_mcp/"* "$STAGE_DIR/"
+zip_dir() { # <каталог> <имя zip>
+  ( cd "$1" && zip -qr "$STAGE/pkg/$2" . -x '*.DS_Store' -x '*/.git/*' )
+}
 
-# Remove unnecessary files
-find "$STAGE_DIR" -name ".DS_Store" -delete
+zip_dir "$ROOT/com_dharma_mcp" com_dharma_mcp.zip
+for p in "$ROOT"/plg_dharmamcp_*; do
+  zip_dir "$p" "$(basename "$p").zip"
+done
 
-cd "$STAGE_DIR"
-zip -r "$DIST_DIR/$ZIP_NAME" . -x "*.git*"
+cp "$ROOT/pkg/pkg_dharma_mcp.xml" "$ROOT/pkg/script.php" "$STAGE/pkg/"
+cp -R "$ROOT/pkg/language" "$STAGE/pkg/language"
 
-cd "$PROJECT_DIR"
-rm -rf "$STAGE_DIR"
+( cd "$STAGE/pkg" && zip -qr "$DIST/pkg_dharma_mcp-$VERSION.zip" . -x '*.DS_Store' )
 
-echo "Build complete: $DIST_DIR/$ZIP_NAME"
+echo "Готово: $DIST/pkg_dharma_mcp-$VERSION.zip"
+unzip -l "$DIST/pkg_dharma_mcp-$VERSION.zip" | sed -n '4,$p' | head -20

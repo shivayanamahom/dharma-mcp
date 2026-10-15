@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<fieldset name="general" label="COM_DHARMA_MCP_CONFIG_GENERAL">
+		<field name="enabled" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_CONFIG_ENABLED"
+			description="COM_DHARMA_MCP_CONFIG_ENABLED_DESC"
+			default="1">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+
+		<field name="require_https" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_CONFIG_REQUIRE_HTTPS"
+			description="COM_DHARMA_MCP_CONFIG_REQUIRE_HTTPS_DESC"
+			default="1">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+
+		<field name="server_mode" type="list"
+			label="COM_DHARMA_MCP_CONFIG_SERVER_MODE"
+			description="COM_DHARMA_MCP_CONFIG_SERVER_MODE_DESC"
+			default="drafts">
+			<option value="read_only">COM_DHARMA_MCP_MODE_READ_ONLY</option>
+			<option value="drafts">COM_DHARMA_MCP_MODE_DRAFTS</option>
+			<option value="full_write">COM_DHARMA_MCP_MODE_FULL_WRITE</option>
+		</field>
+
+		<field name="pii_enabled" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_CONFIG_PII_ENABLED"
+			description="COM_DHARMA_MCP_CONFIG_PII_ENABLED_DESC"
+			default="0">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+
+		<field name="mask_pii" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_CONFIG_MASK_PII"
+			description="COM_DHARMA_MCP_CONFIG_MASK_PII_DESC"
+			default="1"
+			showon="pii_enabled:1">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+
+		<field name="log_retention_days" type="number"
+			label="COM_DHARMA_MCP_CONFIG_LOG_RETENTION"
+			description="COM_DHARMA_MCP_CONFIG_LOG_RETENTION_DESC"
+			default="90" min="1" max="365" />
+
+		<field name="rate_limit_minute" type="number"
+			label="COM_DHARMA_MCP_CONFIG_RATE_LIMIT"
+			description="COM_DHARMA_MCP_CONFIG_RATE_LIMIT_DESC"
+			default="60" min="1" max="600" />
+	</fieldset>
+
+	<fieldset name="permissions" label="JCONFIG_PERMISSIONS_LABEL" description="JCONFIG_PERMISSIONS_DESC">
+		<field name="rules" type="rules" label="JCONFIG_PERMISSIONS_LABEL" class="inputbox"
+			validate="rules" filter="rules" component="com_dharma_mcp" section="component" />
+	</fieldset>
+</config>

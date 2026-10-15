@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+	<fieldset name="details">
+		<field name="id" type="hidden" />
+
+		<field name="title" type="text"
+			label="COM_DHARMA_MCP_TOKEN_TITLE"
+			description="COM_DHARMA_MCP_TOKEN_TITLE_DESC"
+			class="inputbox form-control"
+			required="true" />
+
+		<field name="user_id" type="user"
+			label="COM_DHARMA_MCP_TOKEN_USER"
+			description="COM_DHARMA_MCP_TOKEN_USER_DESC"
+			required="true" />
+
+		<field name="state" type="radio" layout="joomla.form.field.radio.switcher"
+			label="JSTATUS"
+			default="1">
+			<option value="0">JDISABLED</option>
+			<option value="1">JENABLED</option>
+		</field>
+
+		<field name="scopes" type="checkboxes"
+			label="COM_DHARMA_MCP_TOKEN_SCOPES"
+			description="COM_DHARMA_MCP_TOKEN_SCOPES_DESC"
+			required="true">
+			<option value="shop:read">COM_DHARMA_MCP_SCOPE_SHOP_READ</option>
+			<option value="shop:write">COM_DHARMA_MCP_SCOPE_SHOP_WRITE</option>
+			<option value="content:read">COM_DHARMA_MCP_SCOPE_CONTENT_READ</option>
+			<option value="content:write">COM_DHARMA_MCP_SCOPE_CONTENT_WRITE</option>
+			<option value="template:read">COM_DHARMA_MCP_SCOPE_TEMPLATE_READ</option>
+			<option value="template:write">COM_DHARMA_MCP_SCOPE_TEMPLATE_WRITE</option>
+			<option value="system:read">COM_DHARMA_MCP_SCOPE_SYSTEM_READ</option>
+			<option value="system:write">COM_DHARMA_MCP_SCOPE_SYSTEM_WRITE</option>
+			<option value="customers:pii">COM_DHARMA_MCP_SCOPE_CUSTOMERS_PII</option>
+		</field>
+
+		<field name="expires_at" type="calendar"
+			label="COM_DHARMA_MCP_TOKEN_EXPIRES"
+			description="COM_DHARMA_MCP_TOKEN_EXPIRES_DESC"
+			showtime="true"
+			format="%Y-%m-%d %H:%M:%S"
+			filter="user_utc" />
+	</fieldset>
+
+	<fields name="params">
+		<fieldset name="security">
+			<field name="allowed_ips" type="textarea"
+				label="COM_DHARMA_MCP_TOKEN_ALLOWED_IPS"
+				description="COM_DHARMA_MCP_TOKEN_ALLOWED_IPS_DESC"
+				rows="3"
+				filter="string" />
+		</fieldset>
+	</fields>
+</form>
