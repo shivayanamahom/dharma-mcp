@@ -135,7 +135,7 @@ abstract class AbstractEntityTool extends AbstractShopTool
     /** @return array<string, mixed> */
     protected function clean(ToolContext $context, array $def, array $row): array
     {
-        $row = array_diff_key($row, array_flip(self::NOISE));
+        $row = self::maskSecrets(array_diff_key($row, array_flip(self::NOISE)));
 
         foreach ($row as $key => $value) {
             if (\is_string($value) && mb_strlen($value) > 4000) {
@@ -154,6 +154,20 @@ abstract class AbstractEntityTool extends AbstractShopTool
         }
 
         return $row;
+    }
+
+    /** Ключи, токены и пароли в записях (например, ключ карт у способа доставки) ассистенту не показываются. @param array<string, mixed> $data */
+    protected static function maskSecrets(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (\is_array($value)) {
+                $data[$key] = self::maskSecrets($value);
+            } elseif (\is_string($key) && $value !== null && $value !== '' && preg_match('/(token|secret|password|api_?key)/i', $key) === 1) {
+                $data[$key] = '[hidden]';
+            }
+        }
+
+        return $data;
     }
 
     protected static function titleOf(array $def, array $row): string
