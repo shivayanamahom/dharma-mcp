@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: Сухой прогон: собрать и показать, ничего не публикуя
+        description: 'Сухой прогон: собрать и показать, ничего не публикуя'
         type: boolean
         default: true
 
