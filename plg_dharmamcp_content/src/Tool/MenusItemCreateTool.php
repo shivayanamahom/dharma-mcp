@@ -35,7 +35,9 @@ final class MenusItemCreateTool extends AbstractContentTool
     {
         return 'Creates a menu item as an UNPUBLISHED draft. Kinds: "article" (a page showing one article; give article_id), '
             . '"category_blog" (a blog page of one article category, articles shown with their intro text; give category_id), '
-            . '"category_list" (a table list of the articles of one category; give category_id) '
+            . '"category_list" (a table list of the articles of one category; give category_id), '
+            . '"component" (a page of any other installed component, for example a Dharma Shop landing page: give link such as '
+            . '"index.php?option=com_dharmashop_landing&view=landing&id=3", or "...&view=landings" for the list of landing pages) '
             . 'or "url" (an external or internal link; give url). Publish it later with menus.item_set_state after the owner agrees.';
     }
 
@@ -54,7 +56,8 @@ final class MenusItemCreateTool extends AbstractContentTool
         return self::schema([
             'menutype' => self::str('Menu type (see menus.list).'),
             'title' => self::str('Menu item title.'),
-            'kind' => ['type' => 'string', 'enum' => ['article', 'category_blog', 'category_list', 'url'], 'description' => 'What the item opens.'],
+            'kind' => ['type' => 'string', 'enum' => ['article', 'category_blog', 'category_list', 'component', 'url'], 'description' => 'What the item opens.'],
+            'link' => self::str('For kind "component": the internal address, e.g. "index.php?option=com_dharmashop_landing&view=landing&id=3".'),
             'article_id' => self::int('Article id for kind "article".'),
             'category_id' => self::int('Article category id for kinds "category_blog" and "category_list" (see categories.list).'),
             'url' => self::str('Address for kind "url".'),
@@ -68,7 +71,7 @@ final class MenusItemCreateTool extends AbstractContentTool
         $context->requireCan('core.create', 'com_menus', 'create menu items');
         $this->lang($context, 'com_menus', 'com_content');
 
-        $kind = self::oneOf($arguments, 'kind', ['article', 'category_blog', 'category_list', 'url']);
+        $kind = self::oneOf($arguments, 'kind', ['article', 'category_blog', 'category_list', 'component', 'url']);
         $data = [
             'id' => 0,
             'menutype' => self::requireString($arguments, 'menutype'),
@@ -107,6 +110,23 @@ final class MenusItemCreateTool extends AbstractContentTool
                 'component_id' => (int) ComponentHelper::getComponent('com_content')->id,
                 'request' => ['id' => $categoryId],
             ];
+        } elseif ($kind === 'component') {
+            $link = self::requireString($arguments, 'link');
+            if (!preg_match('/^index\.php\?option=(com_[a-z0-9_]+)((?:&[A-Za-z0-9_\-=%.]*)*)$/', $link, $m)) {
+                throw ToolException::validation('The link must look like "index.php?option=com_name&view=name&id=1".');
+            }
+            $db = $context->db;
+            $component = (int) $db->setQuery(
+                $db->createQuery()->select($db->quoteName('extension_id'))->from($db->quoteName('#__extensions'))
+                    ->where($db->quoteName('type') . ' = ' . $db->quote('component'))->where($db->quoteName('element') . ' = ' . $db->quote($m[1]))
+                    ->where($db->quoteName('enabled') . ' = 1')
+            )->loadResult();
+            if ($component === 0) {
+                throw ToolException::validation("Component {$m[1]} is not installed or is disabled.");
+            }
+            parse_str(substr($link, \strlen('index.php?')), $query);
+            unset($query['option'], $query['view'], $query['layout']);
+            $data += ['type' => 'component', 'link' => $link, 'component_id' => $component, 'request' => $query];
         } else {
             $url = self::requireString($arguments, 'url');
             if (!preg_match('#^(https?://|/|index\.php)#i', $url)) {

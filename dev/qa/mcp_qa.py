@@ -392,6 +392,8 @@ def write_flows(c, have, P, created):
                 if check("menus.item_create: «Блог категории» создан черновиком", not err and t.get("state") == "unpublished", json.dumps(t)[:140]):
                     created["menu_items"].append(t["id"])
                     prev, err, t2 = c.confirmed("menus.item_set_state", {"id": t["id"], "state": "trashed"})
+                err, t = c.call("menus.item_create", {"menutype": mt, "title": f"{P} плохой компонент", "kind": "component", "link": "index.php?option=com_no_such_component&view=x"})
+                check("menus.item_create: ссылка на несуществующий компонент отклонена", err and t.get("error") == "validation", json.dumps(t)[:140])
                 err, t = c.call("menus.item_create", {"menutype": mt, "title": f"{P} плохой блог", "kind": "category_blog", "category_id": 1})
                 check("menus.item_create: «Блог категории» с чужой категорией отклонён", err and t.get("error") == "validation", json.dumps(t)[:140])
             err, its = c.call("menus.items", {"menutype": mt, "state": "all"})
