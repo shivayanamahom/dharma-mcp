@@ -120,7 +120,9 @@ def run(args):
         print("Нужна переменная окружения MCP_TOKEN")
         return 2
     c = Client(args.url, token, args.insecure)
-    P = args.prefix
+    # Случайный хвост: псевдонимы записей не пересекаются с остатками прошлых прогонов (из корзины сервер удалять не умеет).
+    import secrets
+    P = f"{args.prefix}-{secrets.token_hex(2)}"
     created = {"articles": [], "categories": [], "menu_items": [], "modules": []}
 
     # ---------------------------------------------------------------- протокол
