@@ -23,4 +23,9 @@
 		<language tag="en-GB">en-GB/pkg_dharma_mcp.sys.ini</language>
 		<language tag="ru-RU">ru-RU/pkg_dharma_mcp.sys.ini</language>
 	</languages>
+
+	<!-- Обновления: Joomla проверяет этот файл и предлагает новую версию в Система → Обновление → Расширения. -->
+	<updateservers>
+		<server type="extension" priority="1" name="Dharma MCP">https://raw.githubusercontent.com/shivayanamahom/dharma-mcp/main/updates/pkg_dharma_mcp.xml</server>
+	</updateservers>
 </extension>
