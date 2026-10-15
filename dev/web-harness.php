@@ -6,6 +6,7 @@
  *   php dev/web-harness.php admin "option=com_dharma_mcp&view=tokens"
  *   php dev/web-harness.php admin "option=com_dharma_mcp&task=token.save" POST '{"jform":{"title":"x","user_id":"42"}}'
  *   php dev/web-harness.php site  "option=com_dharma_mcp&view=authorize&client_id=..."
+ *   php dev/web-harness.php admin "option=com_dharma_mcp&view=tokens" GET '{}' '{"com_dharma_mcp.raw_token":"dhmcp_test"}'   (5-й аргумент — значения сессии)
  *
  * Окружение: DHARMA_SITE (каталог сайта, по умолчанию /Volumes/Work/Server/www/test), DHARMA_HOST (по умолчанию test.test).
  * Для POST действительный токен формы (CSRF) подставляется сам. Выводятся заголовки Status/Location и тело ответа.
@@ -14,6 +15,7 @@ $mode   = $argv[1] ?? 'admin';
 $query  = $argv[2] ?? '';
 $method = strtoupper($argv[3] ?? 'GET');
 $post   = isset($argv[4]) ? (json_decode($argv[4], true) ?: []) : [];
+$sessionValues = isset($argv[5]) ? (json_decode($argv[5], true) ?: []) : [];
 if (!in_array($mode, ['admin', 'site'], true)) {
     fwrite(STDERR, "Первый аргумент: admin или site\n");
     exit(1);
@@ -56,7 +58,10 @@ $db = $container->get('DatabaseDriver');
 $db->setQuery('SELECT u.id FROM #__users u JOIN #__user_usergroup_map m ON m.user_id = u.id WHERE m.group_id = 8 AND u.block = 0 ORDER BY u.id LIMIT 1');
 $userId = (int) $db->loadResult();
 
-$app->getDispatcher()->addListener('onAfterInitialise', function () use ($app, $container, $userId) {
+$app->getDispatcher()->addListener('onAfterInitialise', function () use ($app, $container, $userId, $sessionValues) {
+    foreach ($sessionValues as $k => $v) {
+        $app->getSession()->set($k, $v);
+    }
     $app->loadIdentity($container->get(\Joomla\CMS\User\UserFactoryInterface::class)->loadUserById($userId));
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = \Joomla\CMS\Session\Session::getFormToken();

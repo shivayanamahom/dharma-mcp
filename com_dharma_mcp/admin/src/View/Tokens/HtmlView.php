@@ -14,7 +14,9 @@ namespace Dharma\Component\DharmaMcp\Administrator\View\Tokens;
 
 \defined('_JEXEC') or die;
 
+use Dharma\Component\DharmaMcp\Administrator\Helper\McpHelper;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Router\Route;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\GenericDataException;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
@@ -48,7 +50,12 @@ class HtmlView extends BaseHtmlView
         $session = Factory::getApplication()->getSession();
         if ($rawToken = $session->get('com_dharma_mcp.raw_token')) {
             $session->remove('com_dharma_mcp.raw_token');
-            $msg = Text::_('COM_DHARMA_MCP_RAW_TOKEN_NOTICE') . '<br><br><code>' . htmlspecialchars($rawToken) . '</code>';
+            $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+            $msg = Text::_('COM_DHARMA_MCP_RAW_TOKEN_NOTICE') . '<br><br><code class="user-select-all">' . $e($rawToken) . '</code>'
+                . '<br><br><strong>' . Text::_('COM_DHARMA_MCP_RAW_TOKEN_WHERE') . '</strong>'
+                . '<br>' . Text::_('COM_DHARMA_MCP_RAW_TOKEN_SERVER') . ': <code class="user-select-all">' . $e(McpHelper::serverUrl()) . '</code>'
+                . '<br>' . Text::_('COM_DHARMA_MCP_RAW_TOKEN_CLAUDE_CODE') . ':<pre class="mb-1"><code class="user-select-all">' . $e(McpHelper::claudeCodeCommand($rawToken)) . '</code></pre>'
+                . Text::_('COM_DHARMA_MCP_RAW_TOKEN_MORE') . ' <a href="' . Route::_('index.php?option=com_dharma_mcp&view=connect') . '">' . Text::_('COM_DHARMA_MCP_MENU_CONNECT') . '</a>';
             Factory::getApplication()->enqueueMessage($msg, 'warning');
         }
 
@@ -74,6 +81,8 @@ class HtmlView extends BaseHtmlView
         if ($user->authorise('core.delete', 'com_dharma_mcp')) {
             ToolbarHelper::deleteList('', 'tokens.delete');
         }
+
+        Toolbar::getInstance()->linkButton('connect', 'COM_DHARMA_MCP_CONNECT_HOWTO')->url(Route::_('index.php?option=com_dharma_mcp&view=connect'))->icon('icon-link');
 
         if ($user->authorise('core.admin', 'com_dharma_mcp') || $user->authorise('core.options', 'com_dharma_mcp')) {
             ToolbarHelper::preferences('com_dharma_mcp');
