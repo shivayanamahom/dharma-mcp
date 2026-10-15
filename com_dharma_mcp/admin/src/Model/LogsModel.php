@@ -82,4 +82,34 @@ class LogsModel extends ListModel
 
         return $query;
     }
+
+    /**
+     * Удаляет выбранные записи журнала.
+     *
+     * @param   int[]  $ids  номера записей
+     *
+     * @return  int  сколько записей удалено
+     */
+    public function deleteLogs(array $ids): int
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        $db = $this->getDatabase();
+        $db->setQuery($db->createQuery()->delete($db->quoteName('#__dharma_mcp_logs'))->whereIn($db->quoteName('id'), $ids))->execute();
+
+        return (int) $db->getAffectedRows();
+    }
+
+    /** Удаляет весь журнал. Возвращает число удалённых записей. */
+    public function clearAll(): int
+    {
+        $db = $this->getDatabase();
+        $db->setQuery($db->createQuery()->delete($db->quoteName('#__dharma_mcp_logs')))->execute();
+
+        return (int) $db->getAffectedRows();
+    }
 }

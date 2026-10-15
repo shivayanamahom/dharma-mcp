@@ -33,7 +33,9 @@ final class MenusItemCreateTool extends AbstractContentTool
 
     public function getDescription(): string
     {
-        return 'Creates a menu item as an UNPUBLISHED draft. Kinds: "article" (a page showing one article; give article_id) '
+        return 'Creates a menu item as an UNPUBLISHED draft. Kinds: "article" (a page showing one article; give article_id), '
+            . '"category_blog" (a blog page of one article category, articles shown with their intro text; give category_id), '
+            . '"category_list" (a table list of the articles of one category; give category_id) '
             . 'or "url" (an external or internal link; give url). Publish it later with menus.item_set_state after the owner agrees.';
     }
 
@@ -52,8 +54,9 @@ final class MenusItemCreateTool extends AbstractContentTool
         return self::schema([
             'menutype' => self::str('Menu type (see menus.list).'),
             'title' => self::str('Menu item title.'),
-            'kind' => ['type' => 'string', 'enum' => ['article', 'url'], 'description' => 'What the item opens.'],
+            'kind' => ['type' => 'string', 'enum' => ['article', 'category_blog', 'category_list', 'url'], 'description' => 'What the item opens.'],
             'article_id' => self::int('Article id for kind "article".'),
+            'category_id' => self::int('Article category id for kinds "category_blog" and "category_list" (see categories.list).'),
             'url' => self::str('Address for kind "url".'),
             'parent_id' => self::int('Parent menu item id; 1 or omitted for the top level.'),
             'alias' => self::str('URL alias (optional).'),
@@ -65,7 +68,7 @@ final class MenusItemCreateTool extends AbstractContentTool
         $context->requireCan('core.create', 'com_menus', 'create menu items');
         $this->lang($context, 'com_menus', 'com_content');
 
-        $kind = self::oneOf($arguments, 'kind', ['article', 'url']);
+        $kind = self::oneOf($arguments, 'kind', ['article', 'category_blog', 'category_list', 'url']);
         $data = [
             'id' => 0,
             'menutype' => self::requireString($arguments, 'menutype'),
@@ -90,6 +93,19 @@ final class MenusItemCreateTool extends AbstractContentTool
                 'link' => 'index.php?option=com_content&view=article&id=' . $articleId,
                 'component_id' => (int) ComponentHelper::getComponent('com_content')->id,
                 'request' => ['id' => $articleId],
+            ];
+        } elseif ($kind === 'category_blog' || $kind === 'category_list') {
+            $categoryId = self::requireInt($arguments, 'category_id');
+            $db = $context->db;
+            $extension = (string) $db->setQuery($db->createQuery()->select('extension')->from($db->quoteName('#__categories'))->where('id = ' . $categoryId))->loadResult();
+            if ($extension !== 'com_content') {
+                throw ToolException::validation("Category $categoryId is not an article category. Use categories.list.");
+            }
+            $data += [
+                'type' => 'component',
+                'link' => 'index.php?option=com_content&view=category' . ($kind === 'category_blog' ? '&layout=blog' : '') . '&id=' . $categoryId,
+                'component_id' => (int) ComponentHelper::getComponent('com_content')->id,
+                'request' => ['id' => $categoryId],
             ];
         } else {
             $url = self::requireString($arguments, 'url');

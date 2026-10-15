@@ -18,6 +18,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\GenericDataException;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
+use Joomla\CMS\Toolbar\Toolbar;
 use Joomla\CMS\Toolbar\ToolbarHelper;
 
 class HtmlView extends BaseHtmlView
@@ -53,6 +54,17 @@ class HtmlView extends BaseHtmlView
         ToolbarHelper::title(Text::_('COM_DHARMA_MCP_LOGS_TITLE'), 'list');
 
         $user = Factory::getApplication()->getIdentity();
+
+        if ($user->authorise('core.delete', 'com_dharma_mcp')) {
+            $toolbar = Toolbar::getInstance('toolbar');
+            $toolbar->delete('logs.delete', 'COM_DHARMA_MCP_LOGS_DELETE_SELECTED')
+                ->message('COM_DHARMA_MCP_LOGS_DELETE_CONFIRM')
+                ->listCheck(true);
+            $toolbar->confirmButton('clear', 'COM_DHARMA_MCP_LOGS_CLEAR', 'logs.clear')
+                ->icon('icon-trash')
+                ->message('COM_DHARMA_MCP_LOGS_CLEAR_CONFIRM')
+                ->listCheck(false);
+        }
 
         if ($user->authorise('core.admin', 'com_dharma_mcp') || $user->authorise('core.options', 'com_dharma_mcp')) {
             ToolbarHelper::preferences('com_dharma_mcp');

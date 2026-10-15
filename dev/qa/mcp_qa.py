@@ -346,11 +346,16 @@ def run(args):
 
 def write_flows(c, have, P, created):
     section("Запись: материалы и меню")
+    qa_cat_for_menu = lambda: created["categories"][-1] if created["categories"] else None
     if "articles.create" in have:
         err, t = c.call("categories.create", {"title": f"{P} категория"})
         check("categories.create: черновик", not err and t.get("state") == "unpublished", json.dumps(t)[:150])
+        qa_cat = None
         if not err:
+            qa_cat = t["id"]
             created["categories"].append(t["id"])
+            prev, err2, t2 = c.confirmed("categories.set_state", {"id": qa_cat, "state": "published"})
+            check("categories.set_state: категория опубликована", not err2 and t2.get("state") == "published", json.dumps(t2)[:120])
         err, t = c.call("articles.create", {"title": f"{P} статья", "category_id": 2, "text": "<p>QAMARK-ONE</p>", "meta_description": "qa"})
         ok = check("articles.create: черновик", not err and t.get("state") == "unpublished", json.dumps(t)[:150])
         if ok:
@@ -382,6 +387,13 @@ def write_flows(c, have, P, created):
                 check("menus.item_set_state: опубликован", not err and t2.get("state") == "published", json.dumps(t2)[:120])
                 prev, err, t2 = c.confirmed("menus.item_set_state", {"id": t["id"], "state": "trashed"})
                 check("menus.item_set_state: в корзину", not err and t2.get("state") == "trashed", json.dumps(t2)[:120])
+            if qa_cat_for_menu():
+                err, t = c.call("menus.item_create", {"menutype": mt, "title": f"{P} блог", "kind": "category_blog", "category_id": qa_cat_for_menu()})
+                if check("menus.item_create: «Блог категории» создан черновиком", not err and t.get("state") == "unpublished", json.dumps(t)[:140]):
+                    created["menu_items"].append(t["id"])
+                    prev, err, t2 = c.confirmed("menus.item_set_state", {"id": t["id"], "state": "trashed"})
+                err, t = c.call("menus.item_create", {"menutype": mt, "title": f"{P} плохой блог", "kind": "category_blog", "category_id": 1})
+                check("menus.item_create: «Блог категории» с чужой категорией отклонён", err and t.get("error") == "validation", json.dumps(t)[:140])
             err, its = c.call("menus.items", {"menutype": mt, "state": "all"})
             home = [i for i in its.get("items", []) if i.get("home")]
             if home:

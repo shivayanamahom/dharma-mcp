@@ -17,6 +17,8 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\Layout\LayoutHelper;
 use Joomla\CMS\Router\Route;
 
+HTMLHelper::_('behavior.multiselect');
+
 $listOrder = $this->escape($this->state->get('list.ordering'));
 $listDirn  = $this->escape($this->state->get('list.direction'));
 ?>
@@ -35,6 +37,9 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 					<table class="table table-striped table-hover align-middle small" id="logList">
 						<thead>
 							<tr>
+								<td class="w-1 text-center">
+									<?php echo HTMLHelper::_('grid.checkall'); ?>
+								</td>
 								<th scope="col" class="w-10">
 									<?php echo Text::_('JDATE'); ?>
 								</th>
@@ -71,6 +76,9 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 								};
 							?>
 								<tr class="row<?php echo $i % 2; ?>">
+									<td class="text-center">
+										<?php echo HTMLHelper::_('grid.id', $i, $item->id, false, 'cid', 'cb', $item->tool_name ?: (string) $item->id); ?>
+									</td>
 									<td class="text-nowrap text-muted">
 										<?php echo HTMLHelper::_('date', $item->created, 'Y-m-d H:i:s'); ?>
 									</td>
@@ -115,6 +123,7 @@ $listDirn  = $this->escape($this->state->get('list.direction'));
 				<?php endif; ?>
 
 				<input type="hidden" name="task" value="">
+				<input type="hidden" name="boxchecked" value="0">
 				<?php echo HTMLHelper::_('form.token'); ?>
 			</div>
 		</div>

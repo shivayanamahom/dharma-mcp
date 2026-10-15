@@ -2,7 +2,7 @@
 
 > Файл создаётся скриптом `dev/gen-tools-doc.py` из исходников. Не редактируйте вручную.
 
-Всего инструментов: **59**.
+Всего инструментов: **60**.
 
 Описания инструментов написаны по-английски: их читает ИИ-ассистент, и так он выбирает инструмент точнее. Уровни доступа и подтверждения — в [SECURITY.md](SECURITY.md).
 
@@ -61,7 +61,8 @@
 | `articles.update` | `content:write` | запись | Changes selected fields of an existing article: title, alias, body HTML (replaces the whole body), meta data, category. If the article is published the change is live at once, so the user must confirm. To keep the live page untouched, create a new draft with articles.create instead. Read the current text with articles.get first. |
 | `categories.create` | `content:write` | черновик | Creates an article category as an UNPUBLISHED draft (nobody sees it until published in the Joomla admin or by the owner). parent_id 1 (or omitted) puts it at the top level; use categories.list to find a parent. |
 | `categories.list` | `content:read` | чтение | Lists the categories of Joomla articles as a tree (id, title, parent, depth, state). Needed to choose a category_id for articles.create and to place menu items. |
-| `menus.item_create` | `content:write` | черновик | Creates a menu item as an UNPUBLISHED draft. Kinds: "article" (a page showing one article; give article_id) or "url" (an external or internal link; give url). Publish it later with menus.item_set_state after the owner agrees. |
+| `categories.set_state` | `content:write` | запись | Publishes, unpublishes, archives or moves to trash one article category. Publishing makes the category and its published articles visible to all visitors, so the user must confirm. Nothing is deleted permanently. |
+| `menus.item_create` | `content:write` | черновик | Creates a menu item as an UNPUBLISHED draft. Kinds: "article" (a page showing one article; give article_id), "category_blog" (a blog page of one article category, articles shown with their intro text; give category_id), "category_list" (a table list of the articles of one category; give category_id) or "url" (an external or internal link; give url). Publish it later with menus.item_set_state after the owner agrees. |
 | `menus.item_set_state` | `content:write` | запись | Publishes, unpublishes or moves to trash one menu item. Publishing changes the live navigation, so the user must confirm. The home page item cannot be unpublished or trashed. |
 | `menus.items` | `content:read` | чтение | Lists menu items of one menu as a tree: id, title, alias, link, type, state, parent, depth, home flag. Get the menutype from menus.list. |
 | `menus.list` | `content:read` | чтение | Lists the site menus (menu types such as "mainmenu") with their titles. The menutype value is used by menus.items and menus.item_create. |
