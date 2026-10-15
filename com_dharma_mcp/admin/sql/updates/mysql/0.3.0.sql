@@ -2,6 +2,10 @@ ALTER TABLE `#__dharma_mcp_tokens` ADD COLUMN `kind` varchar(16) NOT NULL DEFAUL
 
 ALTER TABLE `#__dharma_mcp_tokens` ADD COLUMN `client_id` varchar(64) NULL AFTER `kind`;
 
+ALTER TABLE `#__dharma_mcp_tokens` ADD COLUMN `grant_id` varchar(32) NULL AFTER `client_id`;
+
+ALTER TABLE `#__dharma_mcp_tokens` ADD KEY `idx_grant` (`grant_id`);
+
 CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_clients` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `client_id` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -31,6 +35,7 @@ CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_codes` (
 CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_refresh` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `refresh_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `grant_id` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `client_id` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `user_id` int unsigned NOT NULL,
   `scopes` text NOT NULL,
@@ -38,5 +43,6 @@ CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_refresh` (
   `created` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_refresh` (`refresh_hash`),
+  KEY `idx_grant` (`grant_id`),
   KEY `idx_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

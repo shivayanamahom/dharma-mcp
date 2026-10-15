@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS `#__dharma_mcp_tokens` (
   `title` varchar(255) NOT NULL,
   `kind` varchar(16) NOT NULL DEFAULT 'manual',
   `client_id` varchar(64) NULL,
+  `grant_id` varchar(32) NULL,
   `user_id` int unsigned NOT NULL,
   `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `token_prefix` varchar(32) NOT NULL,
@@ -18,7 +19,8 @@ CREATE TABLE IF NOT EXISTS `#__dharma_mcp_tokens` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_token_hash` (`token_hash`),
   KEY `idx_user_state` (`user_id`, `state`),
-  KEY `idx_expires` (`expires_at`)
+  KEY `idx_expires` (`expires_at`),
+  KEY `idx_grant` (`grant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `#__dharma_mcp_logs` (
@@ -83,6 +85,7 @@ CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_codes` (
 CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_refresh` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `refresh_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `grant_id` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `client_id` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `user_id` int unsigned NOT NULL,
   `scopes` text NOT NULL,
@@ -90,5 +93,6 @@ CREATE TABLE IF NOT EXISTS `#__dharma_mcp_oauth_refresh` (
   `created` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_refresh` (`refresh_hash`),
+  KEY `idx_grant` (`grant_id`),
   KEY `idx_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

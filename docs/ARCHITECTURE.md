@@ -1,121 +1,127 @@
-# Архитектура Dharma Shop MCP (`com_dharmashop_mcp`)
+# Архитектура Dharma MCP
 
-## 1. Назначение и границы
+## 1. Состав
 
-Компонент `com_dharmashop_mcp` предоставляет стандартный интерфейс **Model Context Protocol (MCP)** для интернет-магазина Dharma Shop на CMS Joomla! 6+.
+Пакет `pkg_dharma_mcp` содержит шесть расширений.
 
-Компонент полностью отделён от ядра `com_dharmashop` и выступает в роли защищённого шлюза API между внешними ИИ-ассистентами (клиентами) и сервисами интернет-магазина.
+| Расширение | Тип / группа | Роль |
+|---|---|---|
+| `com_dharma_mcp` | компонент | ядро: точка входа MCP, токены, OAuth, права, подтверждения, журнал, админка |
+| `plg_system_dharmamcp` | плагин `system` | короткие адреса `/mcp`, `/oauth/*`, `/.well-known/*` до маршрутизации Joomla |
+| `plg_dharmamcp_shop` | плагин `dharmamcp` | набор «Магазин» |
+| `plg_dharmamcp_content` | плагин `dharmamcp` | набор «Материалы и меню» |
+| `plg_dharmamcp_template` | плагин `dharmamcp` | набор «Шаблон» |
+| `plg_dharmamcp_system` | плагин `dharmamcp` | набор «Система» |
 
----
+Наборы — плагины, а не часть ядра: отключённый плагин полностью убирает свои инструменты, а опасные наборы можно не включать вовсе. Сторонние расширения могут добавлять свои наборы так же.
 
-## 2. Схема базы данных
+Пространства имён: `Dharma\Component\DharmaMcp\{Administrator,Site}`, `Dharma\Plugin\DharmaMcp\{Shop,Content,Template,System}`, `Dharma\Plugin\System\DharmaMcp`. Общие классы ядра (инструменты, сервер, OAuth) лежат в `Site\`, потому что плагины используют их из любого контекста.
 
-Таблицы создаются независимо с префиксом `#__dharmashop_mcp_*`.
+## 2. Поток запроса
 
-```sql
--- Таблица токенов доступа
-CREATE TABLE IF NOT EXISTS `#__dharmashop_mcp_tokens` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) NOT NULL,
-  `user_id` int unsigned NOT NULL,
-  `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `token_prefix` varchar(16) NOT NULL,
-  `scopes` text NOT NULL,
-  `state` tinyint NOT NULL DEFAULT 1,
-  `expires_at` datetime NULL,
-  `last_used_at` datetime NULL,
-  `last_used_ip` varchar(45) NULL,
-  `requests_count` int unsigned NOT NULL DEFAULT 0,
-  `created` datetime NOT NULL,
-  `created_by` int unsigned NOT NULL DEFAULT 0,
-  `params` text NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_token_hash` (`token_hash`),
-  KEY `idx_user_state` (`user_id`, `state`),
-  KEY `idx_expires` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Журнал аудита вызовов инструментов
-CREATE TABLE IF NOT EXISTS `#__dharmashop_mcp_logs` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `token_id` int unsigned NULL,
-  `user_id` int unsigned NULL,
-  `method` varchar(64) NOT NULL,
-  `tool_name` varchar(64) NULL,
-  `arguments_json` mediumtext NULL,
-  `status` varchar(20) NOT NULL DEFAULT 'ok',
-  `duration_ms` int unsigned NOT NULL DEFAULT 0,
-  `error_message` varchar(500) NULL,
-  `ip` varchar(45) NULL,
-  `user_agent` varchar(255) NULL,
-  `created` datetime NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_token_created` (`token_id`, `created`),
-  KEY `idx_created` (`created`),
-  KEY `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Таблица отложенных подтверждений для опасных операций
-CREATE TABLE IF NOT EXISTS `#__dharmashop_mcp_confirmations` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `token_id` int unsigned NOT NULL,
-  `tool_name` varchar(64) NOT NULL,
-  `arguments_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `payload_json` mediumtext NOT NULL,
-  `confirm_code` varchar(32) NOT NULL,
-  `expires_at` datetime NOT NULL,
-  `created` datetime NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_code` (`confirm_code`),
-  KEY `idx_expires` (`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+клиент ── POST /mcp (Bearer) ──►  plg_system_dharmamcp  (onAfterInitialise)
+                                      │ путь известен → контроллер компонента
+                                      ▼
+                          Site\Controller\DisplayController
+                   включён? HTTPS? метод POST? ─► 503 / 403 / 405
+                   TokenAuthenticator            ─► 401 / 403
+                   лимит запросов                ─► 429
+                   разбор JSON-RPC               ─► 400
+                                      ▼
+                             Site\Server\McpServer
+        initialize │ tools/list │ tools/call │ ping │ уведомления → 202
+                                      │
+            ToolRegistry::build() ── событие onDharmaMcpRegisterTools ──► плагины-наборы
+                                      ▼
+            видимость (область, режим) → подтверждение? → tool->execute()
+                                      ▼
+            маскирование персональных данных → JSON → журнал
 ```
 
----
+- Контроллер собирает ответ в буфер и отбрасывает всё лишнее: клиент получает только JSON.
+- Транспорт — Streamable HTTP, ответ одним JSON (без SSE и сессий). Пакетные запросы поддержаны.
+- Версии протокола: `2025-06-18`, `2025-03-26`, `2024-11-05` (согласуется при `initialize`).
 
-## 3. Модель полномочий и скоупы (`scopes`)
+## 3. Контракт инструмента
 
-Каждый токен наделяется набором разрешений:
+Инструмент реализует `Site\Tool\ToolInterface`; удобно наследоваться от `AbstractTool`.
 
-| Скоуп | Описание |
+```php
+final class ArticlesListTool extends AbstractContentTool
+{
+    public function getName(): string { return 'articles.list'; }
+    public function getDescription(): string { return 'Lists Joomla articles ...'; }   // для ассистента, по-английски
+    public function getRequiredScope(): string { return 'content:read'; }
+    public function getAccess(): Access { return Access::Read; }                       // Read | Draft | Write | Danger
+    public function getInputSchema(): array { return self::schema([...], ['required']); }
+    public function execute(array $arguments, ToolContext $context): array { ... }    // от имени пользователя токена
+    // необязательно: preview() — что изменится; needsConfirmation() — подтверждение для этих аргументов
+}
+```
+
+- Ожидаемые ошибки — `ToolException` (`validation`, `forbidden`, `not_found`, `conflict`): их текст показывается ассистенту. Любое другое исключение клиенту не раскрывается, подробности идут в журнал.
+- `ToolContext` даёт пользователя токена, настройки, БД, приложение, проверку прав (`can`, `requireCan`, `requireSuperUser`), `model()` для штатных моделей, `page()` для постраничной выдачи, `userContent()` для недоверенных текстов.
+- Режимы, области, подтверждение, маскирование персональных данных и журнал применяет **сервер**, инструменты их не повторяют.
+
+### Как добавить набор
+
+1. `dev/new-pack.sh <имя> "<описание RU>" "<описание EN>"` — каркас плагина группы `dharmamcp`.
+2. Добавьте файлы `src/Tool/*Tool.php`: плагин находит и регистрирует их сам.
+3. `./build.sh` и `python3 dev/gen-tools-doc.py`.
+
+Сторонний плагин делает то же самое: подписывается на `onDharmaMcpRegisterTools` и вызывает `$event->register(new МойИнструмент())`.
+
+## 4. Правила для инструментов
+
+- **Чтение — через штатные модели, запись — только через службы и модели расширения** (`OrderStatusService`, `ProductModel::savePatch`, `ArticleModel::save`…): так срабатывают те же проверки, события и пересчёты, что и в админке. Прямой `SELECT` допустим для отчётов, у которых нет службы, и только на чтение (`stock.low`, `db.*`).
+- Новое создаётся **черновиком** (неопубликованным).
+- Изменения «живых» данных — уровень *запись*; файлы, настройки, плагины — *опасное*.
+- Каждая правка с проверкой прав: `core.edit` на конкретный объект, а не на компонент вообще.
+- Тексты, написанные посетителями или пришедшие из импорта, возвращаются через `userContent()`.
+- Поля покупателей отдаются под ключами `customer_*`, `email`, `phone`…: сервер сам скроет или замаскирует их по настройкам.
+
+## 5. Аутентификация
+
+- **Токены** (`#__dharma_mcp_tokens`): SHA-256, области, срок, IP, пользователь Joomla. После успеха пользователь токена становится текущим (`$app->loadIdentity`).
+- **OAuth 2.1** (`Site\Oauth\OauthServer`, `OauthController`, страница согласия `tmpl/authorize`):
+  - метаданные: `/.well-known/oauth-protected-resource` (RFC 9728), `/.well-known/oauth-authorization-server` (RFC 8414);
+  - `/oauth/register` (RFC 7591), `/oauth/authorize` (вход Joomla + экран согласия), `/oauth/token`;
+  - токен доступа OAuth — обычная строка в таблице токенов (`kind = oauth`), поэтому дальше работает прежняя проверка;
+  - грант (`grant_id`) связывает токен доступа и токен обновления, отзыв токена в админке отзывает грант;
+  - ответ 401 содержит `WWW-Authenticate: Bearer resource_metadata="…"`, по нему клиент находит настройки.
+
+## 6. База данных
+
+| Таблица | Назначение |
 |---|---|
-| `shop:read` | Базовый доступ на чтение информации о магазине (`ping`, `shop.info`) |
-| `catalog:read` | Чтение товаров, категорий, цен, остатков, характеристик |
-| `orders:read` | Просмотр заказов, статусов, истории без PII |
-| `analytics:read` | Доступ к аналитическим сводкам (продажи, средний чек, топ) |
-| `drafts:write` | Создание и редактирование черновиков (товары, описания, SEO) |
-| `orders:write` | Смена статусов заказов, добавление административных заметок |
-| `catalog:write` | Изменение цен, остатков, публикация товаров |
-| `customers:pii` | Доступ к персональным данным (ФИО, телефон, адрес, email) |
-| `maintenance:exec`| Запуск команд обслуживания (переиндексация, очистка кэша) |
+| `#__dharma_mcp_tokens` | токены доступа (ручные и OAuth) |
+| `#__dharma_mcp_logs` | журнал вызовов |
+| `#__dharma_mcp_confirmations` | одноразовые коды подтверждения |
+| `#__dharma_mcp_oauth_clients` | зарегистрированные клиенты OAuth |
+| `#__dharma_mcp_oauth_codes` | коды авторизации (хэш, 2 минуты) |
+| `#__dharma_mcp_oauth_refresh` | токены обновления (хэш) |
 
----
+Таблицы магазина и ядра Joomla расширение **не изменяет** (только чтение через модели).
 
-## 4. Архитектура обработки запроса
+## 7. Админка
 
-```
-Client (Claude / ChatGPT) 
-    │ HTTPS POST (JSON-RPC 2.0) + Bearer Token
-    ▼
-/index.php?option=com_dharmashop_mcp&format=json
-    │
-    ├─ 1. Authenticator: извлечение Bearer токена, проверка SHA-256 хэша в #__dharmashop_mcp_tokens,
-    │                    проверка срока действия и флага активности (state=1).
-    │
-    ├─ 2. User Context: загрузка субъекта пользователя Joomla (new User($token->user_id)),
-    │                   проверка глобальных прав Joomla ACL.
-    │
-    ├─ 3. MCP Router: валидация JSON-RPC 2.0, диспетчеризация метода:
-    │     ├── `initialize` -> версия протокола, возможности сервера
-    │     ├── `ping`       -> pong
-    │     ├── `tools/list` -> фильтрация инструментов по скоупам токена и ACL пользователя
-    │     └── `tools/call` -> проверка скоупа, проверка двухэтапного подтверждения (если destructive),
-    │                         вызов Handler через сервисы DharmaShop.
-    │
-    ├─ 4. DharmaShop Services: обращение к ShopServices, OrderStatusService, моделям каталога.
-    │                          Никакого прямого SQL!
-    │
-    ├─ 5. Response Sanitize: оборачивание пользовательских данных в `user_content`, маскирование PII.
-    │
-    └─ 6. Logger: асинхронная запись вызова в #__dharmashop_mcp_logs (параметры, время, результат).
-```
+Нативная Joomla: токены (форма, список с поиском), журнал, настройки (`config.xml`) и права (`access.xml`). Своего CSS и JS нет.
+
+## 8. Решения
+
+| № | Решение | Причина |
+|---|---|---|
+| D1 | отдельный компонент и репозиторий `dharma-mcp`, не часть магазина | MCP нужен любому сайту на Joomla, магазин остаётся неизменным |
+| D2 | наборы — плагины группы `dharmamcp` | опасное можно не включать, сторонние расширения добавляют свои инструменты |
+| D3 | действия от имени пользователя Joomla | токен не сильнее пользователя, работает штатная ACL |
+| D4 | режимы сервера + уровни доступа + подтверждение кодом | человек видит предпросмотр до изменения |
+| D5 | без `exec()`, без SSH, без демонов | работает на обычном хостинге |
+| D6 | OAuth реализован в компоненте, адреса — системным плагином | Claude Desktop и ChatGPT не принимают статический ключ |
+| D7 | произвольная запись в БД не предоставляется | риск несоразмерен пользе; нужные изменения идут через модели |
+| D8 | описания инструментов по-английски | ассистенты точнее выбирают инструмент; документация для людей — по-русски |
+| D9 | ответ строго JSON, посторонний вывод отбрасывается | на хостингах с `display_errors` предупреждения PHP ломали бы протокол |
+
+## 9. Проверка
+
+На тестовом сайте: сборка `./build.sh`, установка `php dev/install.php dist/…zip` (скрипт магазина), быстрая синхронизация `dev/sync.sh`. Протокол проверяется запросами `curl`/Python к `/mcp`; для OAuth — регистрация клиента, обмен кода, обновление, отзыв. Автоматических тестов (PHPUnit) пока нет — см. [ROADMAP.md](ROADMAP.md).

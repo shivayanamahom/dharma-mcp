@@ -350,7 +350,8 @@ final class OauthServer
 
         $scopes = json_decode((string) $row->scopes, true) ?: [];
 
-        return $this->issueTokens($clientId, (int) $row->user_id, $scopes);
+        // Грант — одна выданная пользователем авторизация: связывает токены доступа и обновления для отзыва.
+        return $this->issueTokens($clientId, (int) $row->user_id, $scopes, bin2hex(random_bytes(8)));
     }
 
     private function refresh(string $clientId, array $p): array
@@ -382,27 +383,50 @@ final class OauthServer
             throw new OauthException('invalid_grant', 'The refresh token is invalid or expired.');
         }
 
+        // Отзыв: если администратор отключил или удалил токен этого гранта, обновлять нечего.
+        $grant = (string) $row->grant_id;
+        $lookup = $this->db->createQuery()
+            ->select($this->db->quoteName('state'))
+            ->from($this->db->quoteName('#__dharma_mcp_tokens'))
+            ->where($this->db->quoteName('grant_id') . ' = :grant')
+            ->order($this->db->quoteName('id') . ' DESC')
+            ->bind(':grant', $grant);
+        $state = $this->db->setQuery($lookup, 0, 1)->loadResult();
+        if ($state === null || (int) $state !== 1) {
+            $this->revokeGrant($grant);
+            throw new OauthException('invalid_grant', 'This authorization was revoked.');
+        }
+
         $user = Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById((int) $row->user_id);
         if (!$user || (int) $user->id === 0 || (int) $user->block === 1) {
+            $this->revokeGrant($grant);
             throw new OauthException('invalid_grant', 'The user of this authorization is no longer available.');
         }
 
-        return $this->issueTokens($clientId, (int) $row->user_id, json_decode((string) $row->scopes, true) ?: []);
+        return $this->issueTokens($clientId, (int) $row->user_id, json_decode((string) $row->scopes, true) ?: [], $grant);
     }
 
     /** Создаёт токен доступа (строка в таблице токенов) и новый токен обновления. */
-    private function issueTokens(string $clientId, int $userId, array $scopes): array
+    private function issueTokens(string $clientId, int $userId, array $scopes, string $grantId): array
     {
         $access = 'dhmcp_at_' . bin2hex(random_bytes(24));
         $refresh = 'dhmcp_rt_' . bin2hex(random_bytes(32));
         $now = Factory::getDate();
         $created = $now->toSql();
 
+        // У гранта остаётся один токен доступа (последний): в нём же хранится признак отзыва.
+        $cleanup = $this->db->createQuery()
+            ->delete($this->db->quoteName('#__dharma_mcp_tokens'))
+            ->where($this->db->quoteName('grant_id') . ' = :grant')
+            ->bind(':grant', $grantId);
+        $this->db->setQuery($cleanup)->execute();
+
         $client = $this->client($clientId);
         $row = (object) [
             'title' => 'OAuth: ' . ($client->client_name ?? 'client'),
             'kind' => 'oauth',
             'client_id' => $clientId,
+            'grant_id' => $grantId,
             'user_id' => $userId,
             'token_hash' => hash('sha256', $access),
             'token_prefix' => substr($access, 0, 14) . '...',
@@ -419,6 +443,7 @@ final class OauthServer
         // insertObject() принимает объект по ссылке: нужна переменная, а не литерал.
         $refreshRow = (object) [
             'refresh_hash' => hash('sha256', $refresh),
+            'grant_id' => $grantId,
             'client_id' => $clientId,
             'user_id' => $userId,
             'scopes' => json_encode(array_values($scopes)),
@@ -444,6 +469,15 @@ final class OauthServer
         ];
     }
 
+    /** Отзыв гранта целиком: токены обновления и доступа. */
+    public function revokeGrant(string $grantId): void
+    {
+        foreach (['#__dharma_mcp_oauth_refresh', '#__dharma_mcp_tokens'] as $table) {
+            $q = $this->db->createQuery()->delete($this->db->quoteName($table))->where($this->db->quoteName('grant_id') . ' = :grant')->bind(':grant', $grantId);
+            $this->db->setQuery($q)->execute();
+        }
+    }
+
     /** Уборка: просроченные коды, токены обновления, токены доступа OAuth и давно не использованные клиенты. */
     public function purge(): void
     {
@@ -463,6 +497,9 @@ final class OauthServer
             ->delete($this->db->quoteName('#__dharma_mcp_tokens'))
             ->where($this->db->quoteName('kind') . ' = ' . $this->db->quote('oauth'))
             ->where($this->db->quoteName('expires_at') . ' < :limit')
+            // Токен гранта с действующим токеном обновления хранит признак отзыва, его не удаляем.
+            ->where('(' . $this->db->quoteName('grant_id') . ' IS NULL OR ' . $this->db->quoteName('grant_id')
+                . ' NOT IN (SELECT ' . $this->db->quoteName('grant_id') . ' FROM ' . $this->db->quoteName('#__dharma_mcp_oauth_refresh') . '))')
             ->bind(':limit', $dayAgo);
         $this->db->setQuery($q)->execute();
 
