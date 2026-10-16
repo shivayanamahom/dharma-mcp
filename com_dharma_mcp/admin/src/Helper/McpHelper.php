@@ -93,6 +93,29 @@ abstract class McpHelper
             $checks[] = ['title' => Text::_('COM_DHARMA_MCP_CHECK_OAUTH'), 'ok' => false, 'detail' => $meta . ' → ' . mb_substr($e->getMessage(), 0, 160), 'hint' => Text::_('COM_DHARMA_MCP_CHECK_UNREACHABLE')];
         }
 
+        // 3. Хостинг не должен отбрасывать запросы по User-Agent облачных клиентов: часть хостингов включает «защиту от ИИ-ботов»,
+        // и тогда вход проходит, а следующий запрос Claude или ChatGPT к серверу получает 403 от веб-сервера.
+        $blocked = [];
+        $seen = [];
+        foreach (['Claude-User' => 'Claude', 'openai-mcp/1.0' => 'ChatGPT'] as $agent => $label) {
+            try {
+                $r = $http->post($url, '{"jsonrpc":"2.0","id":1,"method":"ping"}', ['Content-Type' => 'application/json', 'User-Agent' => $agent], 8);
+                $code = (int) $r->getStatusCode();
+            } catch (\Throwable $e) {
+                $code = 0;
+            }
+            $seen[] = $label . ': HTTP ' . $code;
+            if ($code === 403) {
+                $blocked[] = $label;
+            }
+        }
+        $checks[] = [
+            'title' => Text::_('COM_DHARMA_MCP_CHECK_BOTS'),
+            'ok' => $blocked === [],
+            'detail' => implode('; ', $seen),
+            'hint' => $blocked === [] ? '' : Text::sprintf('COM_DHARMA_MCP_CHECK_BOTS_HINT', implode(', ', $blocked)),
+        ];
+
         return $checks;
     }
 
