@@ -11,9 +11,36 @@ use Joomla\Database\DatabaseInterface;
 
 final class AuditLogger
 {
+    /** Сколько знаков параметров сохраняется в одной записи журнала. */
+    private const MAX_ARGS_CHARS = 4000;
+
+    /** Длиннее этого значения параметров (файлы, картинки в base64, тексты) в журнале сокращаются. */
+    private const MAX_VALUE_CHARS = 300;
+
     public function __construct(
         private readonly DatabaseInterface $db
     ) {}
+
+    /**
+     * Длинные значения (содержимое файла, картинка в base64, большой текст) в журнал целиком не кладутся:
+     * остаётся начало и число знаков. Иначе журнал разрастался бы на мегабайты за день.
+     *
+     * @param   array<mixed>  $data
+     *
+     * @return  array<mixed>
+     */
+    private static function shorten(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (\is_array($value)) {
+                $data[$key] = self::shorten($value);
+            } elseif (\is_string($value) && mb_strlen($value) > self::MAX_VALUE_CHARS) {
+                $data[$key] = mb_substr($value, 0, 200) . '…[' . mb_strlen($value) . ' знаков]';
+            }
+        }
+
+        return $data;
+    }
 
     public function log(
         ?int $tokenId,
@@ -31,10 +58,10 @@ final class AuditLogger
             $argsJson = null;
             if (!empty($arguments)) {
                 // Маскируем пароли, токены и чувствительные PII (email, телефон, адрес) в аргументах
-                $clean = PiiMasker::sanitizeLogArguments($arguments);
-                $argsJson = json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                if (strlen((string) $argsJson) > 65000) {
-                    $argsJson = substr((string) $argsJson, 0, 65000) . '...[truncated]';
+                $clean = self::shorten(PiiMasker::sanitizeLogArguments($arguments));
+                $argsJson = json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+                if (mb_strlen((string) $argsJson) > self::MAX_ARGS_CHARS) {
+                    $argsJson = mb_substr((string) $argsJson, 0, self::MAX_ARGS_CHARS) . '...[truncated]';
                 }
             }
 
@@ -68,7 +95,7 @@ final class AuditLogger
     }
 
     /** Удаляет записи журнала старше срока хранения (вызывается изредка, в ходе обычных запросов). */
-    public function purge(int $retentionDays): void
+    public function purge(int $retentionDays, int $maxRows = 0): void
     {
         try {
             $before = Factory::getDate('-' . max(1, $retentionDays) . ' days')->toSql();
@@ -77,6 +104,23 @@ final class AuditLogger
                 ->where($this->db->quoteName('created') . ' < :before')
                 ->bind(':before', $before);
             $this->db->setQuery($query)->execute();
+
+            // Предел числа записей: самые старые сверх предела удаляются, как бы много вызовов ни было за срок хранения.
+            if ($maxRows > 0) {
+                $limit = (int) $this->db->setQuery(
+                    $this->db->createQuery()->select($this->db->quoteName('id'))->from($this->db->quoteName('#__dharma_mcp_logs'))
+                        ->order($this->db->quoteName('id') . ' DESC'),
+                    $maxRows,
+                    1
+                )->loadResult();
+
+                if ($limit > 0) {
+                    $this->db->setQuery(
+                        $this->db->createQuery()->delete($this->db->quoteName('#__dharma_mcp_logs'))
+                            ->where($this->db->quoteName('id') . ' <= :limit')->bind(':limit', $limit, \Joomla\Database\ParameterType::INTEGER)
+                    )->execute();
+                }
+            }
         } catch (\Throwable) {
             // Чистка журнала не должна влиять на ответ.
         }

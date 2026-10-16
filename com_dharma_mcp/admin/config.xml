@@ -63,7 +63,12 @@
 		<field name="log_retention_days" type="number"
 			label="COM_DHARMA_MCP_CONFIG_LOG_RETENTION"
 			description="COM_DHARMA_MCP_CONFIG_LOG_RETENTION_DESC"
-			default="90" min="1" max="365" />
+			default="30" min="1" max="365" />
+
+		<field name="log_max_rows" type="number"
+			label="COM_DHARMA_MCP_CONFIG_LOG_MAX_ROWS"
+			description="COM_DHARMA_MCP_CONFIG_LOG_MAX_ROWS_DESC"
+			default="20000" min="1000" max="1000000" />
 
 		<field name="rate_limit_minute" type="number"
 			label="COM_DHARMA_MCP_CONFIG_RATE_LIMIT"

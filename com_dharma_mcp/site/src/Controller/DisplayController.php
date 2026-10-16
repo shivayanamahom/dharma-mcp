@@ -116,8 +116,8 @@ class DisplayController extends BaseController
         }
 
         $logger = new AuditLogger($db);
-        if (random_int(1, 100) === 1) {
-            $logger->purge((int) $params->get('log_retention_days', 90));
+        if (random_int(1, 50) === 1) {
+            $logger->purge((int) $params->get('log_retention_days', 30), (int) $params->get('log_max_rows', 20000));
             (new OauthServer($db))->purge();
         }
 
