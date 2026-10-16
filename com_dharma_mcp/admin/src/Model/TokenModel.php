@@ -15,6 +15,7 @@ namespace Dharma\Component\DharmaMcp\Administrator\Model;
 \defined('_JEXEC') or die;
 
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Model\AdminModel;
 use Joomla\CMS\Table\Table;
 use Joomla\Registry\Registry;
@@ -62,7 +63,7 @@ class TokenModel extends AdminModel
         $raw = null;
 
         if (empty($data['id'])) {
-            $raw = 'dhmcp_' . bin2hex(random_bytes(24));
+            $raw = self::newSecret();
             $data['token_hash'] = hash('sha256', $raw);
             $data['token_prefix'] = substr($raw, 0, 14) . '...';
         }
@@ -76,5 +77,50 @@ class TokenModel extends AdminModel
         }
 
         return true;
+    }
+
+    /** Новое значение токена: 192 бита случайных данных. */
+    private static function newSecret(): string
+    {
+        return 'dhmcp_' . bin2hex(random_bytes(24));
+    }
+
+    /**
+     * Пересоздание: у той же записи (название, пользователь, области, срок, IP, состояние, журнал) меняется только секрет.
+     * Старое значение перестаёт действовать сразу, непогашенные коды подтверждения этого токена удаляются. Новое значение
+     * показывается один раз (сессия), как при создании. OAuth-токены Claude и ChatGPT не пересоздаются: их отключают, и программа
+     * получает новый доступ при следующем входе.
+     *
+     * @throws \RuntimeException
+     */
+    public function regenerate(int $id): void
+    {
+        $table = $this->getTable();
+
+        if ($id < 1 || !$table->load($id)) {
+            throw new \RuntimeException(Text::_('COM_DHARMA_MCP_TOKEN_NOT_FOUND'));
+        }
+
+        if ((string) $table->kind !== 'manual') {
+            throw new \RuntimeException(Text::_('COM_DHARMA_MCP_TOKEN_REGENERATE_OAUTH'));
+        }
+
+        $raw = self::newSecret();
+        $table->token_hash = hash('sha256', $raw);
+        $table->token_prefix = substr($raw, 0, 14) . '...';
+        // Новое значение ещё нигде не использовалось: «последнее использование» сбрасывается, чтобы было видно, когда им воспользуются.
+        $table->last_used_at = null;
+        $table->last_used_ip = null;
+
+        // updateNulls: поля «последнее использование» должны очиститься, а не остаться прежними.
+        $table->store(true);
+
+        $db = $this->getDatabase();
+        $db->setQuery(
+            $db->createQuery()->delete($db->quoteName('#__dharma_mcp_confirmations'))
+                ->where($db->quoteName('token_id') . ' = :token')->bind(':token', $id, \Joomla\Database\ParameterType::INTEGER)
+        )->execute();
+
+        Factory::getApplication()->getSession()->set('com_dharma_mcp.raw_token', $raw);
     }
 }

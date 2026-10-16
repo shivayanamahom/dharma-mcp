@@ -76,6 +76,8 @@ class HtmlView extends BaseHtmlView
 
         if ($user->authorise('core.edit', 'com_dharma_mcp')) {
             ToolbarHelper::editList('token.edit');
+            Toolbar::getInstance()->confirmButton('regenerate', 'COM_DHARMA_MCP_TOKEN_REGENERATE', 'tokens.regenerate')
+                ->message('COM_DHARMA_MCP_TOKEN_REGENERATE_CONFIRM')->icon('icon-refresh')->listCheck(true);
         }
 
         if ($user->authorise('core.delete', 'com_dharma_mcp')) {

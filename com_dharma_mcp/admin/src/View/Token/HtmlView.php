@@ -14,9 +14,11 @@ namespace Dharma\Component\DharmaMcp\Administrator\View\Token;
 
 \defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\View\GenericDataException;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
+use Joomla\CMS\Toolbar\Toolbar;
 use Joomla\CMS\Toolbar\ToolbarHelper;
 
 class HtmlView extends BaseHtmlView
@@ -52,6 +54,13 @@ class HtmlView extends BaseHtmlView
 
         ToolbarHelper::apply('token.apply');
         ToolbarHelper::save('token.save');
+
+        // Пересоздать можно сохранённый токен, созданный вручную; OAuth-токены программ не пересоздаются.
+        if (!$isNew && (string) ($this->item->kind ?? 'manual') === 'manual' && Factory::getApplication()->getIdentity()->authorise('core.edit', 'com_dharma_mcp')) {
+            Toolbar::getInstance()->confirmButton('regenerate', 'COM_DHARMA_MCP_TOKEN_REGENERATE', 'token.regenerate')
+                ->message('COM_DHARMA_MCP_TOKEN_REGENERATE_CONFIRM')->icon('icon-refresh')->listCheck(false);
+        }
+
         ToolbarHelper::cancel('token.cancel');
     }
 }

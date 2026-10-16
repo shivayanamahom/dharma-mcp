@@ -33,6 +33,14 @@ HTMLHelper::_('behavior.keepalive');
 					<?php echo $this->form->renderField('allowed_ips', 'params'); ?>
 				</div>
 			</div>
+			<?php if (!empty($this->item->id)) : ?>
+				<div class="alert alert-info">
+					<?php if (!empty($this->item->token_prefix)) : ?>
+						<p class="mb-2"><?php echo Text::_('COM_DHARMA_MCP_TOKEN_PREFIX'); ?>: <code><?php echo $this->escape($this->item->token_prefix); ?></code></p>
+					<?php endif; ?>
+					<?php echo Text::_('COM_DHARMA_MCP_TOKEN_LOST_HINT'); ?>
+				</div>
+			<?php endif; ?>
 		</div>
 
 		<div class="col-lg-4">
