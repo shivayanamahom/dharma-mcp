@@ -88,6 +88,7 @@ class DisplayController extends BaseController
         $auth = (new TokenAuthenticator($db))->authenticate($authHeader, $ip);
         if (!$auth->success) {
             $code = $auth->errorCode > 0 ? $auth->errorCode : 401;
+            $this->logRejected($db, $authHeader ? 'auth/rejected' : 'auth/no-token', (string) $auth->errorMessage, $ip, $userAgent);
             if ($code === 401) {
                 // Клиентам MCP: где искать настройки авторизации (RFC 9728), чтобы начать вход через OAuth.
                 $challenge = 'Bearer';
@@ -193,5 +194,28 @@ class DisplayController extends BaseController
             ->bind(':since', $since);
 
         return (int) $db->setQuery($query)->loadResult();
+    }
+
+    /**
+     * Запрос без действительного токена попадает в журнал, чтобы владелец видел, что клиент до сайта дошёл, но не вошёл.
+     * С одного адреса пишется не больше пяти записей в минуту: журнал не должен забиваться сканерами.
+     */
+    private function logRejected(DatabaseInterface $db, string $method, string $message, ?string $ip, ?string $userAgent): void
+    {
+        try {
+            $since = \Joomla\CMS\Factory::getDate('-1 minute')->toSql();
+            $recent = (int) $db->setQuery(
+                $db->createQuery()->select('COUNT(*)')->from($db->quoteName('#__dharma_mcp_logs'))
+                    ->where($db->quoteName('method') . ' LIKE ' . $db->quote('auth/%'))
+                    ->where($db->quoteName('ip') . ' = ' . $db->quote((string) $ip))
+                    ->where($db->quoteName('created') . ' > ' . $db->quote($since))
+            )->loadResult();
+
+            if ($recent < 5) {
+                (new AuditLogger($db))->log(null, null, $method, null, null, 'error', 0, $message, $ip, $userAgent);
+            }
+        } catch (\Throwable) {
+            // журнал не должен мешать ответу
+        }
     }
 }

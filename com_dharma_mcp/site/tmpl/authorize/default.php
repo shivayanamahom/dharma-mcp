@@ -58,8 +58,9 @@ $h = static fn (?string $s): string => htmlspecialchars((string) $s, ENT_QUOTES,
 			<?php endforeach; ?>
 			<?php echo HTMLHelper::_('form.token'); ?>
 
-			<button type="submit" name="decision" value="allow" class="btn btn-primary"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_ALLOW'); ?></button>
-			<button type="submit" name="decision" value="deny" class="btn btn-outline-secondary"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_DENY'); ?></button>
+			<?php // Цвета заданы прямо в разметке: стили шаблона сайта не должны делать кнопки невидимыми. ?>
+			<button type="submit" name="decision" value="allow" class="btn btn-primary" style="background:#0d6efd;color:#fff;border:1px solid #0d6efd;padding:.5rem 1.25rem;border-radius:.375rem;cursor:pointer"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_ALLOW'); ?></button>
+			<button type="submit" name="decision" value="deny" class="btn btn-outline-secondary" style="background:#fff;color:#333;border:1px solid #6c757d;padding:.5rem 1.25rem;border-radius:.375rem;cursor:pointer"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_DENY'); ?></button>
 		</form>
 	<?php endif; ?>
 </div>

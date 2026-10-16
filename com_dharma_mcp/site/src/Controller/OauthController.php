@@ -14,6 +14,7 @@ namespace Dharma\Component\DharmaMcp\Site\Controller;
 
 \defined('_JEXEC') or die;
 
+use Dharma\Component\DharmaMcp\Site\Audit\AuditLogger;
 use Dharma\Component\DharmaMcp\Site\Oauth\OauthException;
 use Dharma\Component\DharmaMcp\Site\Oauth\OauthServer;
 use Joomla\CMS\Component\ComponentHelper;
@@ -61,8 +62,11 @@ class OauthController extends BaseController
 
         $meta = json_decode((string) file_get_contents('php://input'), true);
         try {
-            $this->json(201, $this->oauthServer()->register(\is_array($meta) ? $meta : []));
+            $registered = $this->oauthServer()->register(\is_array($meta) ? $meta : []);
+            $this->audit('oauth/register', 'ok', null, ['client_name' => (string) ($registered['client_name'] ?? ''), 'client_id' => (string) ($registered['client_id'] ?? '')]);
+            $this->json(201, $registered);
         } catch (OauthException $e) {
+            $this->audit('oauth/register', 'error', $e->getMessage(), ['client_name' => \is_array($meta) ? (string) ($meta['client_name'] ?? '') : '']);
             $this->oauthError($e);
         }
     }
@@ -82,9 +86,14 @@ class OauthController extends BaseController
             $params = \is_array($decoded) ? $decoded : [];
         }
 
+        $what = ['grant_type' => (string) ($params['grant_type'] ?? ''), 'client_id' => (string) ($params['client_id'] ?? '')];
+
         try {
-            $this->json(200, $this->oauthServer()->token($params));
+            $issued = $this->oauthServer()->token($params);
+            $this->audit('oauth/token', 'ok', null, $what);
+            $this->json(200, $issued);
         } catch (OauthException $e) {
+            $this->audit('oauth/token', 'error', $e->getMessage(), $what);
             $this->oauthError($e);
         }
     }
@@ -119,7 +128,10 @@ class OauthController extends BaseController
             $app->redirect(Uri::root());
         }
 
+        $what = ['client' => (string) $validated['client']->client_name, 'decision' => $input->post->getCmd('decision')];
+
         if ($input->post->getCmd('decision') !== 'allow') {
+            $this->audit('oauth/consent', 'error', 'The user denied the request.', $what, (int) $user->id);
             $this->redirectToClient($validated['redirect_uri'], ['error' => 'access_denied', 'error_description' => 'The user denied the request.'], $validated['state']);
         }
 
@@ -127,14 +139,33 @@ class OauthController extends BaseController
         $allowed = OauthServer::grantableScopes($user, (int) $params->get('pii_enabled', 0) === 1);
         $chosen = array_values(array_intersect((array) $input->post->get('scopes', [], 'array'), $validated['scopes'], $allowed));
         if ($chosen === []) {
+            $this->audit('oauth/consent', 'error', 'No permissions were granted.', $what, (int) $user->id);
             $this->redirectToClient($validated['redirect_uri'], ['error' => 'access_denied', 'error_description' => 'No permissions were granted.'], $validated['state']);
         }
 
+        $this->audit('oauth/consent', 'ok', null, $what + ['scopes' => implode(' ', $chosen)], (int) $user->id);
         $code = $server->issueCode((string) $validated['client']->client_id, (int) $user->id, $chosen, $validated['redirect_uri'], $validated['code_challenge']);
         $this->redirectToClient($validated['redirect_uri'], ['code' => $code, 'iss' => OauthServer::issuer()], $validated['state']);
     }
 
     // ---- Внутреннее ------------------------------------------------------------------------------------------------
+
+    /** Событие входа (регистрация программы, согласие, выдача токена) — в журнал вызовов, чтобы владелец видел, что произошло. */
+    private function audit(string $method, string $status, ?string $error, ?array $details, ?int $userId = null): void
+    {
+        (new AuditLogger(Factory::getContainer()->get(DatabaseInterface::class)))->log(
+            null,
+            $userId,
+            $method,
+            null,
+            $details,
+            $status,
+            0,
+            $error,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            isset($_SERVER['HTTP_USER_AGENT']) ? substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 255) : null
+        );
+    }
 
     private function oauthServer(): OauthServer
     {
