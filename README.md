@@ -110,6 +110,7 @@ https://github.com/shivayanamahom/dharma-mcp/releases/latest/download/pkg_dharma
 |---|---|
 | [docs/INSTALL.md](docs/INSTALL.md) | установка, настройки, подключение клиентов, особенности хостинга |
 | [docs/TOOLS.md](docs/TOOLS.md) | справочник всех инструментов |
+| [docs/CLIENT_CHECK.md](docs/CLIENT_CHECK.md) | как проверить подключение Claude (Desktop, claude.ai) и ChatGPT |
 | [docs/SECURITY.md](docs/SECURITY.md) | модель безопасности и остаточные риски |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | устройство, как написать свой набор инструментов |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | состояние и планы |
