@@ -38,7 +38,7 @@ cat > "$D/services/provider.php" <<PHP
 <?php
 
 /**
- * Dharma MCP — набор «$EL».
+ * Dharma MCP — набор «${EL}».
  *
  * @package    plg_dharmamcp_$EL
  * @copyright  (C) 2026 Dharma. Все права защищены.
@@ -74,7 +74,7 @@ cat > "$D/src/Extension/$CLASS.php" <<PHP
 <?php
 
 /**
- * Dharma MCP — набор «$EL».
+ * Dharma MCP — набор «${EL}».
  *
  * @package    plg_dharmamcp_$EL
  * @copyright  (C) 2026 Dharma. Все права защищены.

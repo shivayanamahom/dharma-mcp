@@ -21,12 +21,14 @@
 			<option value="1">JENABLED</option>
 		</field>
 
-		<field name="scopes" type="checkboxes"
+		<field name="scopes" validate="options" type="Scopes" addfieldprefix="Dharma\Component\DharmaMcp\Administrator\Field"
 			label="COM_DHARMA_MCP_TOKEN_SCOPES"
 			description="COM_DHARMA_MCP_TOKEN_SCOPES_DESC"
 			required="true">
 			<option value="shop:read">COM_DHARMA_MCP_SCOPE_SHOP_READ</option>
 			<option value="shop:write">COM_DHARMA_MCP_SCOPE_SHOP_WRITE</option>
+			<option value="radicalmart:read">COM_DHARMA_MCP_SCOPE_RADICALMART_READ</option>
+			<option value="radicalmart:write">COM_DHARMA_MCP_SCOPE_RADICALMART_WRITE</option>
 			<option value="content:read">COM_DHARMA_MCP_SCOPE_CONTENT_READ</option>
 			<option value="content:write">COM_DHARMA_MCP_SCOPE_CONTENT_WRITE</option>
 			<option value="template:read">COM_DHARMA_MCP_SCOPE_TEMPLATE_READ</option>

@@ -6,7 +6,7 @@
 	<author>Dharma</author>
 	<copyright>(C) 2026 Dharma. Все права защищены.</copyright>
 	<license>GNU General Public License версии 2 или новее; см. LICENSE.txt</license>
-	<version>0.6.5</version>
+	<version>0.6.6</version>
 	<description>PKG_DHARMA_MCP_XML_DESCRIPTION</description>
 	<scriptfile>script.php</scriptfile>
 
@@ -14,6 +14,7 @@
 		<file type="component" id="com_dharma_mcp">com_dharma_mcp.zip</file>
 		<file type="plugin" id="dharmamcp" group="system">plg_system_dharmamcp.zip</file>
 		<file type="plugin" id="shop" group="dharmamcp">plg_dharmamcp_shop.zip</file>
+		<file type="plugin" id="radicalmart" group="dharmamcp">plg_dharmamcp_radicalmart.zip</file>
 		<file type="plugin" id="content" group="dharmamcp">plg_dharmamcp_content.zip</file>
 		<file type="plugin" id="template" group="dharmamcp">plg_dharmamcp_template.zip</file>
 		<file type="plugin" id="system" group="dharmamcp">plg_dharmamcp_system.zip</file>

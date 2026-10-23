@@ -2,20 +2,21 @@
 
 ## 1. Состав
 
-Пакет `pkg_dharma_mcp` содержит шесть расширений.
+Пакет `pkg_dharma_mcp` содержит семь расширений.
 
 | Расширение | Тип / группа | Роль |
 |---|---|---|
 | `com_dharma_mcp` | компонент | ядро: точка входа MCP, токены, OAuth, права, подтверждения, журнал, админка |
 | `plg_system_dharmamcp` | плагин `system` | короткие адреса `/mcp`, `/oauth/*`, `/.well-known/*` до маршрутизации Joomla |
 | `plg_dharmamcp_shop` | плагин `dharmamcp` | набор «Магазин» |
+| `plg_dharmamcp_radicalmart` | плагин `dharmamcp` | отдельный набор RadicalMart |
 | `plg_dharmamcp_content` | плагин `dharmamcp` | набор «Материалы и меню» |
 | `plg_dharmamcp_template` | плагин `dharmamcp` | набор «Шаблон» |
 | `plg_dharmamcp_system` | плагин `dharmamcp` | набор «Система» |
 
 Наборы — плагины, а не часть ядра: отключённый плагин полностью убирает свои инструменты, а опасные наборы можно не включать вовсе. Сторонние расширения могут добавлять свои наборы так же.
 
-Пространства имён: `Dharma\Component\DharmaMcp\{Administrator,Site}`, `Dharma\Plugin\DharmaMcp\{Shop,Content,Template,System}`, `Dharma\Plugin\System\DharmaMcp`. Общие классы ядра (инструменты, сервер, OAuth) лежат в `Site\`, потому что плагины используют их из любого контекста.
+Пространства имён: `Dharma\Component\DharmaMcp\{Administrator,Site}`, `Dharma\Plugin\DharmaMcp\{Shop,Radicalmart,Content,Template,System}`, `Dharma\Plugin\System\DharmaMcp`. Общие классы ядра (инструменты, сервер, OAuth) лежат в `Site\`, потому что плагины используют их из любого контекста.
 
 ## 2. Поток запроса
 
@@ -129,3 +130,13 @@ final class ArticlesListTool extends AbstractContentTool
 ## 9. Проверка
 
 На тестовом сайте: сборка `./build.sh`, установка `php dev/install.php dist/…zip` (скрипт магазина), быстрая синхронизация `dev/sync.sh`. Протокол проверяется запросами `curl`/Python к `/mcp`; для OAuth — регистрация клиента, обмен кода, обновление, отзыв. Сквозной автотест `dev/qa/mcp_qa.py` проверяет работающий сервер по протоколу (чтение всех инструментов, защита, сценарии записи, режимы сервера); подробности в `AGENTS.md`. Модульных тестов (PHPUnit) пока нет — см. [ROADMAP.md](ROADMAP.md).
+
+## Адаптер RadicalMart
+
+`plg_dharmamcp_radicalmart` регистрирует только `radicalmart.*` и только при установленном `com_radicalmart`. Имена не пересекаются с `products.*`, `orders.*`, `shop.*` Dharma Shop. Области `radicalmart:read` и `radicalmart:write` независимы от `shop:*`; старые токены и OAuth-гранты сохраняют прежние области. Общий механизм MCP продолжает проверять режим, подтверждение, журнал и персональные данные.
+
+`EntityCatalog` задаёт разрешённые сущности и поля. Права проверяются на секциях RadicalMart (`com_radicalmart.products`, `.categories`, `.fields`, `.orders`); `core.edit.own` проверяется по владельцу конкретной записи. Частичная правка объединяется с текущими данными модели, числовые списки заменяются целиком. Нередактируемые элементы формы (авторы, служебные даты и правила) исключаются перед валидацией, чтобы их значения по умолчанию не перезаписали запись. Корневая категория защищена. Удаление — только перенос в корзину.
+
+Особенность цены: штатный `AdminModel::addPricesFields` проверяет путь через `JPATH_COMPONENT`, который в MCP указывает на `com_dharma_mcp`. Адаптер явно загружает тот же `product_prices.xml`, вызывает штатное событие подготовки формы цен и подставляет валюты. Сохранение/пересчёты остаются в модели RadicalMart. Файлы RadicalMart не изменяются.
+
+Группировка разрешений в обеих формах использует общий `ScopeCatalog`; редактор токена — наследник штатного `CheckboxesField` с нативными стилями Joomla. Значения `scopes[]` сохраняются в прежнем формате; пустой выбор и неизвестные области отклоняются.

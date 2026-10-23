@@ -10,6 +10,7 @@
 
 \defined('_JEXEC') or die;
 
+use Dharma\Component\DharmaMcp\Site\Support\ScopeCatalog;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Router\Route;
@@ -36,19 +37,24 @@ $h = static fn (?string $s): string => htmlspecialchars((string) $s, ENT_QUOTES,
 		<form action="<?php echo Route::_('index.php?option=com_dharma_mcp&task=oauth.consent'); ?>" method="post">
 			<fieldset class="mb-3">
 				<legend class="h6"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_SCOPES'); ?></legend>
-				<?php foreach ($req['scopes'] as $i => $scope) :
-					$allowed = \in_array($scope, $this->grantable, true);
-					$label = Text::_('COM_DHARMA_MCP_SCOPE_' . strtoupper(str_replace(':', '_', $scope)));
-				?>
-					<div class="form-check">
-						<input class="form-check-input" type="checkbox" name="scopes[]" id="scope<?php echo (int) $i; ?>" value="<?php echo $h($scope); ?>"
-							<?php echo $allowed ? 'checked' : 'disabled'; ?>>
-						<label class="form-check-label" for="scope<?php echo (int) $i; ?>">
-							<?php echo $h($label); ?>
-							<?php if (!$allowed) : ?><span class="badge bg-secondary"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_NOT_ALLOWED'); ?></span><?php endif; ?>
-						</label>
-					</div>
-				<?php endforeach; ?>
+                <?php foreach (ScopeCatalog::groups($req['scopes']) as $group) : ?>
+                    <fieldset class="border rounded p-3 mb-3" data-scope-group="<?php echo $h($group['key']); ?>">
+                        <legend class="h6 float-none w-auto px-2"><?php echo Text::_($group['title']); ?></legend>
+                        <p class="small text-muted"><?php echo Text::_($group['description']); ?></p>
+                        <?php foreach ($group['scopes'] as $scope) :
+                            $allowed = in_array($scope, $this->grantable, true);
+                            $label = Text::_('COM_DHARMA_MCP_SCOPE_' . strtoupper(str_replace(':', '_', $scope)));
+                            $oid = 'scope_' . str_replace(':', '_', $scope);
+                        ?>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="scopes[]" id="<?php echo $h($oid); ?>" value="<?php echo $h($scope); ?>" <?php echo $allowed ? 'checked' : 'disabled'; ?>>
+                                <label class="form-check-label" for="<?php echo $h($oid); ?>"><?php echo $h($label); ?> <small class="text-muted">(<?php echo $h($scope); ?>)</small>
+                                    <?php if (!$allowed) : ?><span class="badge bg-secondary"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_NOT_ALLOWED'); ?></span><?php endif; ?>
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
+                    </fieldset>
+                <?php endforeach; ?>
 			</fieldset>
 
 			<p class="small text-muted"><?php echo Text::_('COM_DHARMA_MCP_OAUTH_ACL_NOTE'); ?></p>

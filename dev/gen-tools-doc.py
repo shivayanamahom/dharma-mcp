@@ -13,6 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PACKS = [
     ("core", "Ядро", "com_dharma_mcp/site/src/Tool", "Всегда доступно."),
     ("shop", "Магазин (Dharma Shop)", "plg_dharmamcp_shop/src/Tool", "Плагин `dharmamcp/shop`. Включён по умолчанию, если установлен Dharma Shop."),
+    ("radicalmart", "RadicalMart", "plg_dharmamcp_radicalmart/src/Tool", "Плагин `dharmamcp/radicalmart`. Нужен RadicalMart 3.0.27+. Отдельные области `radicalmart:read` и `radicalmart:write`."),
     ("content", "Материалы и меню", "plg_dharmamcp_content/src/Tool", "Плагин `dharmamcp/content`. Включён по умолчанию."),
     ("template", "Шаблон", "plg_dharmamcp_template/src/Tool", "Плагин `dharmamcp/template`. **Выключен по умолчанию** (доступ к файлам). Нужен Суперпользователь для записи файлов."),
     ("system", "Система", "plg_dharmamcp_system/src/Tool", "Плагин `dharmamcp/system`. **Выключен по умолчанию** (настройки, расширения, база). Только Суперпользователь."),

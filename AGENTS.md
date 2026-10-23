@@ -45,6 +45,7 @@
 com_dharma_mcp/            компонент (admin/, site/, dharma_mcp.xml)
 plg_system_dharmamcp/      системный плагин: /mcp, /oauth/*, /.well-known/*
 plg_dharmamcp_shop/        набор «Магазин»
+plg_dharmamcp_radicalmart/ отдельный набор RadicalMart (radicalmart.*)
 plg_dharmamcp_content/     набор «Материалы и меню»
 plg_dharmamcp_template/    набор «Шаблон»
 plg_dharmamcp_system/      набор «Система»
@@ -57,6 +58,7 @@ build.sh                   сборка dist/pkg_dharma_mcp-<версия>.zip
 ## Тестовый стенд
 
 - Сайт `https://test.test` (`/Volumes/Work/Server/www/test`), PHP — `/Applications/ServBay/package/php/8.4/current/bin/php`.
+- Стенд RadicalMart: `https://spargo.test` (`/Volumes/Work/Server/www/spargo.test`), RadicalMart 3.0.27. Проверка: `radicalmart_fixture.php seed`, `radicalmart_ui_qa.py`, `radicalmart_qa.py --url https://spargo.test/mcp --insecure` из `dev/qa`. Скрипт протокола убирает fixtures в `finally`; при ручной диагностике выполните `radicalmart_fixture.php cleanup`. Только записи QA-MCP-RM; уведомления покупателям не отправлять.
 - Быстрая выкладка: `dev/sync.sh`. Чистая проверка пакета: `./build.sh`, затем `php dev/install.php dist/pkg_dharma_mcp-<версия>.zip` из репозитория магазина (`/Volumes/Work/Joomla/dharma_shop`), удаление — Installer `uninstall('package', id)`.
 - Консольная загрузка Joomla — `dharma_shop/dev/boot.php` (путь сайта — `DHARMA_SITE`).
 - Проверка протокола — запросами к `/mcp` с временным токеном (создавайте его и **удаляйте после проверки**).

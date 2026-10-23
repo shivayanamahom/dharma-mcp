@@ -38,11 +38,12 @@ final class OauthServer
     public const MAX_CLIENTS = 500;
 
     /** Области по умолчанию, если клиент не запросил свои. */
-    public const DEFAULT_SCOPES = ['shop:read', 'content:read'];
+    public const DEFAULT_SCOPES = ['shop:read', 'radicalmart:read', 'content:read'];
 
     /** Все области и кому они доступны: true — только Суперпользователю. */
     public const SCOPES = [
         'shop:read' => false, 'shop:write' => false,
+        'radicalmart:read' => false, 'radicalmart:write' => false,
         'content:read' => false, 'content:write' => false,
         'template:read' => true, 'template:write' => true,
         'system:read' => true, 'system:write' => true,
