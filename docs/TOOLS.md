@@ -2,7 +2,7 @@
 
 > Файл создаётся скриптом `dev/gen-tools-doc.py` из исходников. Не редактируйте вручную.
 
-Всего инструментов: **74**.
+Всего инструментов: **76**.
 
 Описания инструментов написаны по-английски: их читает ИИ-ассистент, и так он выбирает инструмент точнее. Уровни доступа и подтверждения — в [SECURITY.md](SECURITY.md).
 
@@ -82,9 +82,11 @@
 | `categories.create` | `content:write` | черновик | Creates an article category as an UNPUBLISHED draft (nobody sees it until published in the Joomla admin or by the owner). parent_id 1 (or omitted) puts it at the top level; use categories.list to find a parent. |
 | `categories.list` | `content:read` | чтение | Lists the categories of Joomla articles as a tree (id, title, parent, depth, state). Needed to choose a category_id for articles.create and to place menu items. |
 | `categories.set_state` | `content:write` | запись | Publishes, unpublishes, archives or moves to trash one article category. Publishing makes the category and its published articles visible to all visitors, so the user must confirm. Nothing is deleted permanently. |
+| `categories.update` | `content:write` | запись | Sets the SEO meta description (about 150 characters) and meta keywords of one article category. An empty string clears a value, an omitted field stays unchanged. Title, alias, parent and description of the category are not touched. Blog and list pages of the category change for visitors at once, so the user must confirm. Find ids with categories.list. |
 | `media.image_upload` | `content:write` | черновик | Uploads one image (jpg, png or webp, up to 10 MB) into the site image folder images/dharma-mcp/articles, either from a public https address ("url") or from base64 text ("base64"). Returns "path" (e.g. images/dharma-mcp/articles/2026/ab12cd34-photo.jpg). Use that path in articles.create / articles.update as "image_intro" or "image_fulltext", or in an <img src="..."> tag of the article text. The file is not shown anywhere until you put it into an article. |
 | `menus.item_create` | `content:write` | черновик | Creates a menu item as an UNPUBLISHED draft. Kinds: "article" (a page showing one article; give article_id), "category_blog" (a blog page of one article category, articles shown with their intro text; give category_id), "category_list" (a table list of the articles of one category; give category_id), "component" (a page of any other installed component, for example a Dharma Shop landing page: give link such as "index.php?option=com_dharmashop_landing&view=landing&id=3", or "...&view=landings" for the list of landing pages) or "url" (an external or internal link; give url). Publish it later with menus.item_set_state after the owner agrees. |
 | `menus.item_set_state` | `content:write` | запись | Publishes, unpublishes or moves to trash one menu item. Publishing changes the live navigation, so the user must confirm. The home page item cannot be unpublished or trashed. |
+| `menus.item_update` | `content:write` | запись | Sets the SEO meta data of one site menu item: meta description (about 150 characters), meta keywords and the browser page title. An empty string clears a value, an omitted field stays unchanged. The item type, link, alias and position are not touched. The page changes for visitors at once, so the user must confirm. Find ids with menus.items. |
 | `menus.items` | `content:read` | чтение | Lists menu items of one menu as a tree: id, title, alias, link, type, state, parent, depth, home flag. Get the menutype from menus.list. |
 | `menus.list` | `content:read` | чтение | Lists the site menus (menu types such as "mainmenu") with their titles. The menutype value is used by menus.items and menus.item_create. |
 | `modules.create_custom` | `content:write` | черновик | Creates a custom HTML module (mod_custom) as an UNPUBLISHED draft in a template position, shown on all pages once published. Typical uses: a promo banner, a notice, a block with phone numbers. Check positions with modules.positions. Publish it later with modules.set_state after the owner agrees. |
