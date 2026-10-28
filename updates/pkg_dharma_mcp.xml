@@ -6,12 +6,12 @@
 		<element>pkg_dharma_mcp</element>
 		<type>package</type>
 		<client>site</client>
-		<version>0.6.7</version>
-		<infourl title="Dharma MCP 0.6.7">https://github.com/shivayanamahom/dharma-mcp/releases/tag/v0.6.7</infourl>
+		<version>0.6.8</version>
+		<infourl title="Dharma MCP 0.6.8">https://github.com/shivayanamahom/dharma-mcp/releases/tag/v0.6.8</infourl>
 		<downloads>
-			<downloadurl type="full" format="zip">https://github.com/shivayanamahom/dharma-mcp/releases/download/v0.6.7/pkg_dharma_mcp-0.6.7.zip</downloadurl>
+			<downloadurl type="full" format="zip">https://github.com/shivayanamahom/dharma-mcp/releases/download/v0.6.8/pkg_dharma_mcp-0.6.8.zip</downloadurl>
 		</downloads>
-		<sha256>bbf561b5d2a611725634d43d497bac9860ef56882da4918ca741170840b62431</sha256>
+		<sha256>74093aaa6d3d316f30a1efd4aaba5242e90d8fc5ef331bc383963e2c8b9421cd</sha256>
 		<tags>
 			<tag>stable</tag>
 		</tags>
