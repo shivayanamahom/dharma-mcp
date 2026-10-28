@@ -81,7 +81,7 @@ try:
     native('mode', 'drafts')
     check('drafts mode active', call('ping')['server_mode'] == 'drafts')
     all_tools = tools(c)
-    check('10 RadicalMart tools registered', len(all_tools) == 10)
+    check('11 RadicalMart tools registered', len(all_tools) == 11)
     read_tools = tools(ro)
     check('read token hides mutation tools', len(read_tools) == 6 and 'radicalmart.entity_create' not in read_tools)
     check('Dharma Shop token grants no RadicalMart access', not tools(shop))

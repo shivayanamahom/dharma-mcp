@@ -28,6 +28,8 @@ use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolInterface;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolRegistry;
 use Joomla\CMS\Application\CMSApplication;
+use Joomla\CMS\Document\FactoryInterface;
+use Joomla\CMS\Factory;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Registry\Registry;
 
@@ -215,6 +217,19 @@ final class McpServer
         return $list;
     }
 
+    /**
+     * В запросе MCP у приложения Joomla нет документа страницы. Расширения, которые при сохранении или показе записи
+     * подключают скрипты и стили (поля Multimedia, редакторы, плагины контента), берут у него менеджер ресурсов и
+     * падают с «Call to a member function getWebAssetManager() on null». Пустой HTML-документ ничего не выводит
+     * в ответ, но даёт им работать как в обычном запросе.
+     */
+    private function ensureDocument(): void
+    {
+        if ($this->app->getDocument() === null) {
+            $this->app->loadDocument(Factory::getContainer()->get(FactoryInterface::class)->createDocument('html'));
+        }
+    }
+
     private function callTool(
         JsonRpcRequest $request,
         AuthResult $auth,
@@ -233,6 +248,7 @@ final class McpServer
             throw new \InvalidArgumentException('Unknown tool, or this token is not allowed to use it: ' . $toolName, JsonRpcError::INVALID_PARAMS);
         }
 
+        $this->ensureDocument();
         $context = new ToolContext($auth, $this->params, $this->db, $this->app, $this->mode());
 
         if ($this->needsConfirmation($tool, $arguments, $context)) {
