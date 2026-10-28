@@ -15,6 +15,7 @@ namespace Dharma\Plugin\DharmaMcp\Content\Tool;
 \defined('_JEXEC') or die;
 
 use Dharma\Component\DharmaMcp\Site\Tool\AbstractTool;
+use Dharma\Component\DharmaMcp\Site\Tool\ImageStore;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolContext;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 
@@ -26,6 +27,65 @@ abstract class AbstractContentTool extends AbstractTool
 {
     /** Состояния публикации Joomla. */
     protected const STATES = ['published' => 1, 'unpublished' => 0, 'archived' => 2, 'trashed' => -2];
+
+    /** Картинки статьи: поле инструмента => ключ в параметре images статьи Joomla. */
+    protected const IMAGE_FIELDS = [
+        'image_intro' => 'image_intro',
+        'image_intro_alt' => 'image_intro_alt',
+        'image_fulltext' => 'image_fulltext',
+        'image_fulltext_alt' => 'image_fulltext_alt',
+    ];
+
+    /** Свойства входной схемы для картинок статьи. */
+    protected static function imageProperties(): array
+    {
+        return [
+            'image_intro' => self::str('Intro image (shown in blog and list views): path under images/, e.g. from media.image_upload. Empty string removes it.'),
+            'image_intro_alt' => self::str('Alt text of the intro image.'),
+            'image_fulltext' => self::str('Full-article image (shown on the article page): path under images/, e.g. from media.image_upload. Empty string removes it.'),
+            'image_fulltext_alt' => self::str('Alt text of the full-article image.'),
+        ];
+    }
+
+    /**
+     * Переданные картинки статьи в виде ключей параметра images; пути проверяются (файл должен лежать на сайте).
+     *
+     * @return array<string, string>
+     */
+    protected static function imageArguments(array $arguments): array
+    {
+        $images = [];
+        foreach (self::IMAGE_FIELDS as $field => $key) {
+            if (!\array_key_exists($field, $arguments)) {
+                continue;
+            }
+            $value = $arguments[$field];
+            if (!\is_string($value)) {
+                throw ToolException::validation("Parameter '$field' must be a string.");
+            }
+            if (str_ends_with($field, '_alt')) {
+                if (mb_strlen($value) > 255) {
+                    throw ToolException::validation("Parameter '$field' must be up to 255 characters.");
+                }
+                $images[$key] = trim($value);
+            } else {
+                $images[$key] = ImageStore::existingPath($value);
+            }
+        }
+
+        return $images;
+    }
+
+    /** Текущие картинки статьи (параметр images приходит из модели строкой JSON или массивом). */
+    protected static function currentImages(object $article): array
+    {
+        $images = $article->images ?? [];
+        if (\is_string($images)) {
+            $images = json_decode($images, true);
+        }
+
+        return \is_array($images) ? $images : (\is_object($images) ? get_object_vars($images) : []);
+    }
 
     public function getPack(): string
     {

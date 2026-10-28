@@ -9,7 +9,7 @@ use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 final class EntityCreateTool extends AbstractRadicalmartTool
 {
     public function getName(): string { return 'radicalmart.entity_create'; }
-    public function getDescription(): string { return 'Creates an unpublished RadicalMart product, category (also manufacturer or badge), or custom field through its native form validation and model. Call radicalmart.entities first to learn field names. data uses native fields: title, category for products, parent_id/type for categories, area/plugin/params for characteristics. Always forces state=0, even if input says otherwise.'; }
+    public function getDescription(): string { return 'Creates an unpublished RadicalMart product, category (also manufacturer or badge), or custom field through its native form validation and model. Call radicalmart.entities first to learn field names. data uses native fields: title, category for products, parent_id/type for categories, area/plugin/params for characteristics. Always forces state=0, even if input says otherwise. Images: upload with radicalmart.image_upload, then data.media.gallery = [{"type": "image", "src": "<path>", "alt": "..."}].'; }
     public function getRequiredScope(): string { return 'radicalmart:write'; }
     public function getAccess(): Access { return Access::Draft; }
     public function getInputSchema(): array { return self::schema(['entity' => self::entityProperty(), 'data' => ['type' => 'object', 'description' => 'Native form data, fields discovered with radicalmart.entities. No id or author fields.']], ['entity','data']); }
@@ -20,6 +20,7 @@ final class EntityCreateTool extends AbstractRadicalmartTool
         $this->authorize($context, $def, 'core.create');
         $data = self::dataArgument($arguments);
         $this->validatePatch($def, $data);
+        self::normalizeGallery($data);
         $defaults = $def['key'] === 'category' ? ['parent_id' => 1, 'type' => 'category'] : [];
         $data = self::merge(['language' => '*'] + $defaults, $data);
         $data['id'] = 0; $data['state'] = 0;

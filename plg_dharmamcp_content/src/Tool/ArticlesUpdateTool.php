@@ -42,7 +42,7 @@ final class ArticlesUpdateTool extends AbstractContentTool
 
     public function getDescription(): string
     {
-        return 'Changes selected fields of an existing article: title, alias, body HTML (replaces the whole body), meta data, category. '
+        return 'Changes selected fields of an existing article: title, alias, body HTML (replaces the whole body), meta data, category, intro and full-article images (image_intro, image_fulltext with alt text; upload files with media.image_upload first). '
             . 'If the article is published the change is live at once, so the user must confirm. '
             . 'To keep the live page untouched, create a new draft with articles.create instead. Read the current text with articles.get first.';
     }
@@ -72,7 +72,7 @@ final class ArticlesUpdateTool extends AbstractContentTool
             'meta_description' => self::str('New SEO description.'),
             'meta_keywords' => self::str('New SEO keywords.'),
             'category_id' => self::int('Move to this category.'),
-        ], ['id']);
+        ] + self::imageProperties(), ['id']);
     }
 
     /** @return array<string, mixed>  Изменения в терминах Joomla. */
@@ -95,8 +95,13 @@ final class ArticlesUpdateTool extends AbstractContentTool
             }
         }
 
+        $images = self::imageArguments($arguments);
+        if ($images !== []) {
+            $changes['images'] = $images;
+        }
+
         if ($changes === []) {
-            throw ToolException::validation('Pass at least one field to change.', ['fields' => array_keys(self::FIELDS)]);
+            throw ToolException::validation('Pass at least one field to change.', ['fields' => array_merge(array_keys(self::FIELDS), array_keys(self::IMAGE_FIELDS))]);
         }
 
         return $changes;
@@ -124,7 +129,7 @@ final class ArticlesUpdateTool extends AbstractContentTool
         $current = ['articletext' => trim((string) $article->introtext . ((string) $article->fulltext !== '' ? '<hr id="system-readmore">' . $article->fulltext : ''))];
         $diff = [];
         foreach ($changes as $key => $new) {
-            $old = $current[$key] ?? $article->$key ?? null;
+            $old = $key === 'images' ? array_intersect_key(self::currentImages($article), $new) : ($current[$key] ?? $article->$key ?? null);
             $diff[$key] = ['from' => self::shorten($old), 'to' => self::shorten($new)];
         }
 
@@ -143,6 +148,11 @@ final class ArticlesUpdateTool extends AbstractContentTool
         $changes = $this->changes($arguments);
         $this->authorize($context, $article, $changes);
 
+        if (isset($changes['images'])) {
+            // Параметр images сохраняется целиком: подмешиваем к текущим, чтобы не потерять остальные (выравнивание, подписи).
+            $changes['images'] = $changes['images'] + self::currentImages($article);
+        }
+
         $model = $context->model('com_content', 'Article');
         // ArticleModel::save всегда читает catid; без него Joomla печатает предупреждения PHP.
         if (!$model->save(['id' => $id, 'catid' => (int) $article->catid] + $changes)) {
@@ -157,7 +167,7 @@ final class ArticlesUpdateTool extends AbstractContentTool
             'title' => (string) $after->title,
             'state' => self::stateName((int) $after->state),
             'modified' => $after->modified ?: null,
-            'changed_fields' => array_keys($arguments === [] ? [] : array_intersect_key($arguments, self::FIELDS)),
+            'changed_fields' => array_keys(array_intersect_key($arguments, self::FIELDS + self::IMAGE_FIELDS)),
         ];
     }
 

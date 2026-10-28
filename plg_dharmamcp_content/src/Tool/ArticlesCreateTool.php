@@ -33,7 +33,8 @@ final class ArticlesCreateTool extends AbstractContentTool
     {
         return 'Creates a new article as an UNPUBLISHED draft (visitors cannot see it) in the given category. '
             . 'The text is HTML. Tell the owner the article id so they can review it; publish it only after they agree, with articles.set_state. '
-            . 'Find category ids with categories.list.';
+            . 'Find category ids with categories.list. '
+            . 'Images: upload a file with media.image_upload, then pass its path as image_intro (blog/list views) and/or image_fulltext (article page), with alt text in image_intro_alt / image_fulltext_alt.';
     }
 
     public function getRequiredScope(): string
@@ -55,7 +56,7 @@ final class ArticlesCreateTool extends AbstractContentTool
             'alias' => self::str('URL alias (optional; made from the title when empty).'),
             'meta_description' => self::str('SEO description, up to about 160 characters.'),
             'meta_keywords' => self::str('SEO keywords, comma separated.'),
-        ], ['title', 'category_id']);
+        ] + self::imageProperties(), ['title', 'category_id']);
     }
 
     public function execute(array $arguments, ToolContext $context): array
@@ -63,6 +64,7 @@ final class ArticlesCreateTool extends AbstractContentTool
         $title = self::requireString($arguments, 'title');
         $categoryId = self::requireInt($arguments, 'category_id');
         $context->requireCan('core.create', 'com_content.category.' . $categoryId, 'create articles in this category');
+        $images = self::imageArguments($arguments);
         $this->lang($context, 'com_content');
 
         $model = $context->model('com_content', 'Article');
@@ -79,7 +81,7 @@ final class ArticlesCreateTool extends AbstractContentTool
             'metadesc' => self::optionalString($arguments, 'meta_description') ?? '',
             'metakey' => self::optionalString($arguments, 'meta_keywords') ?? '',
             'created_by' => (int) $context->user()->id,
-            'images' => [],
+            'images' => $images,
             'urls' => [],
             'attribs' => [],
             'metadata' => [],

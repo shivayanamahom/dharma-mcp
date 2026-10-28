@@ -63,6 +63,20 @@ final class ArticlesGetTool extends AbstractContentTool
         return $article;
     }
 
+    /** Картинки статьи: пути без служебного суффикса Joomla после «#», подписи — как данные сайта. */
+    private function images(ToolContext $context, object $article): array
+    {
+        $images = self::currentImages($article);
+        $path = static fn (string $key): string => trim((string) strtok((string) ($images[$key] ?? ''), '#'));
+
+        return [
+            'image_intro' => $path('image_intro'),
+            'image_intro_alt' => $context->userContent((string) ($images['image_intro_alt'] ?? '')),
+            'image_fulltext' => $path('image_fulltext'),
+            'image_fulltext_alt' => $context->userContent((string) ($images['image_fulltext_alt'] ?? '')),
+        ];
+    }
+
     public function execute(array $arguments, ToolContext $context): array
     {
         $id = self::requireInt($arguments, 'id');
@@ -89,6 +103,7 @@ final class ArticlesGetTool extends AbstractContentTool
             'meta_keywords' => (string) $a->metakey,
             'intro_text' => $context->userContent((string) $a->introtext),
             'full_text' => $context->userContent((string) $a->fulltext),
+            'images' => $this->images($context, $a),
             'url' => 'index.php?option=com_content&view=article&id=' . (int) $a->id . '&catid=' . (int) $a->catid,
         ];
     }

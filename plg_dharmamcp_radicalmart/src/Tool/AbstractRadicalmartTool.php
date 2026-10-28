@@ -7,6 +7,7 @@ use Dharma\Component\DharmaMcp\Site\Tool\Access;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolContext;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 use Dharma\Component\DharmaMcp\Site\Tool\AbstractTool;
+use Dharma\Component\DharmaMcp\Site\Tool\ImageStore;
 use Dharma\Plugin\DharmaMcp\Radicalmart\Entity\EntityCatalog;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Form\Form;
@@ -199,6 +200,32 @@ abstract class AbstractRadicalmartTool extends AbstractTool
         if (isset($data['state']) && !in_array($data['state'], [0, 1, '0', '1'], true)) {
             throw ToolException::validation('state must be 0 or 1; use entity_trash to move a record to trash.');
         }
+    }
+
+    /**
+     * Галерея товара или категории (media.gallery): каждая картинка — {"type": "image", "src": "images/...", "alt": "..."}.
+     * Путь должен вести к файлу на сайте (например, из radicalmart.image_upload); тип по умолчанию — image.
+     */
+    protected static function normalizeGallery(array &$patch): void
+    {
+        if (!isset($patch['media']['gallery'])) { return; }
+        $gallery = $patch['media']['gallery'];
+        if (!is_array($gallery) || ($gallery !== [] && !array_is_list($gallery))) {
+            throw ToolException::validation('media.gallery must be a list of {"type": "image", "src": "images/...", "alt": "..."}.');
+        }
+        foreach ($gallery as $i => $item) {
+            if (!is_array($item) || !is_string($item['src'] ?? null)) {
+                throw ToolException::validation('Each media.gallery item needs a "src" path, e.g. from radicalmart.image_upload.');
+            }
+            $type = (string) ($item['type'] ?? 'image');
+            if ($type !== 'image') { throw ToolException::validation('Only image items are supported in media.gallery.'); }
+            $src = ImageStore::existingPath($item['src']);
+            if ($src === '') { throw ToolException::validation('A gallery item needs a non-empty "src".'); }
+            $alt = $item['alt'] ?? '';
+            if (!is_string($alt) || mb_strlen($alt) > 255) { throw ToolException::validation('The gallery "alt" must be a string of up to 255 characters.'); }
+            $gallery[$i] = ['type' => 'image', 'src' => $src, 'alt' => $alt] + array_diff_key($item, ['type' => 1, 'src' => 1, 'alt' => 1]);
+        }
+        $patch['media']['gallery'] = $gallery;
     }
 
     /** Merge maps, replace numeric lists (gallery, options) rather than retaining removed list entries. */
