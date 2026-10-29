@@ -356,16 +356,19 @@ final class OauthServer
             ->bind(':hash', $hash);
         $row = $this->db->setQuery($query)->loadObject();
 
-        // Код одноразовый: удаляем при любой попытке обмена, даже неудачной.
+        // Код одноразовый: удаляем при любой попытке обмена, даже неудачной. Обмен засчитывается только тому запросу,
+        // чьё удаление сработало: два одновременных запроса с одним кодом не получат по паре токенов.
+        $consumed = false;
         if ($row) {
             $delete = $this->db->createQuery()
                 ->delete($this->db->quoteName('#__dharma_mcp_oauth_codes'))
                 ->where($this->db->quoteName('id') . ' = :id')
                 ->bind(':id', $row->id, ParameterType::INTEGER);
             $this->db->setQuery($delete)->execute();
+            $consumed = $this->db->getAffectedRows() === 1;
         }
 
-        if (!$row || $row->expires_at < $now || !hash_equals((string) $row->client_id, $clientId)) {
+        if (!$row || !$consumed || $row->expires_at < $now || !hash_equals((string) $row->client_id, $clientId)) {
             throw new OauthException('invalid_grant', 'The authorization code is invalid or expired.');
         }
         if (isset($p['redirect_uri']) && (string) $p['redirect_uri'] !== (string) $row->redirect_uri) {
@@ -399,16 +402,19 @@ final class OauthServer
             ->bind(':hash', $hash);
         $row = $this->db->setQuery($query)->loadObject();
 
-        // Вращение: использованный токен обновления погашается всегда.
+        // Вращение: использованный токен обновления погашается всегда, и только один из одновременных запросов
+        // с одним и тем же токеном получает новую пару.
+        $consumed = false;
         if ($row) {
             $delete = $this->db->createQuery()
                 ->delete($this->db->quoteName('#__dharma_mcp_oauth_refresh'))
                 ->where($this->db->quoteName('id') . ' = :id')
                 ->bind(':id', $row->id, ParameterType::INTEGER);
             $this->db->setQuery($delete)->execute();
+            $consumed = $this->db->getAffectedRows() === 1;
         }
 
-        if (!$row || $row->expires_at < $now || !hash_equals((string) $row->client_id, $clientId)) {
+        if (!$row || !$consumed || $row->expires_at < $now || !hash_equals((string) $row->client_id, $clientId)) {
             throw new OauthException('invalid_grant', 'The refresh token is invalid or expired.');
         }
 

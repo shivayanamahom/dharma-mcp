@@ -90,7 +90,8 @@ final class Confirmations
             ->bind(':id', $id, ParameterType::INTEGER);
         $this->db->setQuery($delete)->execute();
 
-        return true;
+        // Код одноразовый: если параллельный запрос успел погасить его раньше, действие не выполняется второй раз.
+        return $this->db->getAffectedRows() === 1;
     }
 
     /** Хэш аргументов без самого кода подтверждения; порядок ключей не важен. */
