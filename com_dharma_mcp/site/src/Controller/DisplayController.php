@@ -38,6 +38,9 @@ class DisplayController extends BaseController
     /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
     protected $option = 'com_dharma_mcp';
 
+    /** Сколько вызовов допускается в одном пакетном запросе (иначе пакет обходил бы лимит запросов в минуту). */
+    private const MAX_BATCH = 50;
+
     public function display($cachable = false, $urlparams = [])
     {
         // Страница согласия OAuth — обычный HTML-вид Joomla, остальное — JSON-эндпоинт MCP.
@@ -104,7 +107,8 @@ class DisplayController extends BaseController
         }
 
         $limit = (int) $params->get('rate_limit_minute', 60);
-        if ($limit > 0 && $this->requestsLastMinute($db, (int) $auth->token->id) >= $limit) {
+        $used = $limit > 0 ? $this->requestsLastMinute($db, (int) $auth->token->id) : 0;
+        if ($limit > 0 && $used >= $limit) {
             header('Retry-After: 30');
             $this->send(429, JsonRpcResponse::error(null, new JsonRpcError(JsonRpcError::RATE_LIMITED, 'Too many requests, retry later')));
         }
@@ -113,6 +117,17 @@ class DisplayController extends BaseController
         $payload = \is_string($raw) && trim($raw) !== '' ? json_decode($raw, true) : null;
         if (!\is_array($payload) || $payload === []) {
             $this->send(400, JsonRpcResponse::error(null, new JsonRpcError(JsonRpcError::PARSE_ERROR, 'Empty or invalid JSON body')));
+        }
+
+        // Пакет считается по числу вызовов в нём: каждый попадает в журнал и в счёт лимита.
+        $isBatch = array_is_list($payload);
+        $items = $isBatch ? $payload : [$payload];
+        if (\count($items) > self::MAX_BATCH) {
+            $this->send(400, JsonRpcResponse::error(null, new JsonRpcError(JsonRpcError::INVALID_REQUEST, 'Too many requests in one batch (up to ' . self::MAX_BATCH . ')')));
+        }
+        if ($limit > 0 && $used + \count($items) > $limit) {
+            header('Retry-After: 30');
+            $this->send(429, JsonRpcResponse::error(null, new JsonRpcError(JsonRpcError::RATE_LIMITED, 'Too many requests, retry later')));
         }
 
         $logger = new AuditLogger($db);
@@ -124,8 +139,6 @@ class DisplayController extends BaseController
         $server = new McpServer(ToolRegistry::build($app), $logger, new Confirmations($db), $params, $db, $app);
 
         // Пакетный запрос (массив) поддержан для совместимости со старыми клиентами.
-        $isBatch = array_is_list($payload);
-        $items = $isBatch ? $payload : [$payload];
         $responses = [];
 
         foreach ($items as $item) {

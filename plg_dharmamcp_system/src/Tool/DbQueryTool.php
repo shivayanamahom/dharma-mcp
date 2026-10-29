@@ -33,7 +33,11 @@ final class DbQueryTool extends AbstractSystemTool
 
     /** Таблицы, закрытые всегда (без префикса). */
     private const ALWAYS_DENIED = ['users', 'user_keys', 'user_profiles', 'session', 'user_mfa', 'webauthn_credentials', 'privacy_requests',
-        'privacy_consents', 'dharma_mcp_tokens', 'dharma_mcp_confirmations', 'dharma_mcp_oauth_clients', 'dharma_mcp_oauth_codes'];
+        'privacy_consents', 'dharma_mcp_tokens', 'dharma_mcp_confirmations', 'dharma_mcp_oauth_clients', 'dharma_mcp_oauth_codes',
+        'dharma_mcp_oauth_refresh'];
+
+    /** Таблицы покупателей RadicalMart (заказы, покупатели, корзины и т. п.) по началу имени: закрыты так же, как таблицы Dharma Shop. */
+    private const PII_TABLE_PATTERNS = ['radicalmart_(?:order|customer|cart|user|wish|compar|notif|payment|mess)[A-Za-z0-9_]*'];
 
     /** Таблицы с данными покупателей: закрыты, пока персональные данные не разрешены. */
     private const PII_TABLES = ['dharmashop_customers', 'dharmashop_orders', 'dharmashop_order_items', 'dharmashop_order_history', 'dharmashop_order_adjustments',
@@ -111,20 +115,34 @@ final class DbQueryTool extends AbstractSystemTool
             }
         }
 
+        $piiAllowed = $context->piiAllowed();
         $denied = self::ALWAYS_DENIED;
-        if (!$context->piiAllowed()) {
+        if (!$piiAllowed) {
             $denied = array_merge($denied, self::PII_TABLES);
         }
         foreach ($denied as $table) {
-            if (preg_match('/(?<![A-Za-z0-9_])`?' . preg_quote($prefix . $table, '/') . '`?(?![A-Za-z0-9_])/i', $real)) {
+            if (self::mentionsTable($real, preg_quote($prefix . $table, '/'))) {
                 throw ToolException::forbidden(
                     "Table #__$table is not available through db.query"
                     . (\in_array($table, self::PII_TABLES, true) ? ' because personal data is not allowed for this token or server.' : '.')
                 );
             }
         }
+        if (!$piiAllowed) {
+            foreach (self::PII_TABLE_PATTERNS as $pattern) {
+                if (self::mentionsTable($real, preg_quote($prefix, '/') . $pattern)) {
+                    throw ToolException::forbidden('This table is not available through db.query because personal data is not allowed for this token or server.');
+                }
+            }
+        }
 
         return $real;
+    }
+
+    /** Упоминается ли в запросе таблица (имя целиком, в обратных кавычках или без, в любом регистре). $pattern — готовая часть регулярного выражения. */
+    private static function mentionsTable(string $sql, string $pattern): bool
+    {
+        return preg_match('/(?<![A-Za-z0-9_])`?' . $pattern . '`?(?![A-Za-z0-9_])/i', $sql) === 1;
     }
 
     public function execute(array $arguments, ToolContext $context): array

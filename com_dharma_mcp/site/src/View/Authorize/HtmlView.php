@@ -45,6 +45,12 @@ class HtmlView extends BaseHtmlView
         $user = $app->getIdentity();
         $app->getLanguage()->load('com_dharma_mcp', JPATH_ADMINISTRATOR);
 
+        // Страницу согласия нельзя вставлять в чужой фрейм: иначе посторонний сайт прикроет кнопку «Разрешить» невидимой
+        // и выманит у администратора доступ для программы, зарегистрированной злоумышленником.
+        $app->setHeader('X-Frame-Options', 'DENY', true);
+        $app->setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+        $app->setHeader('Cache-Control', 'no-store', true);
+
         $params = ComponentHelper::getParams('com_dharma_mcp');
         if ((int) $params->get('oauth_enabled', 1) !== 1) {
             $this->error = 'COM_DHARMA_MCP_OAUTH_DISABLED';

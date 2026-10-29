@@ -35,6 +35,9 @@ class OauthController extends BaseController
     /** Joomla угадывает имя компонента по пространству имён (com_dharmamcp), поэтому оно задано явно. */
     protected $option = 'com_dharma_mcp';
 
+    /** Сколько регистраций программ принимается с одного адреса за час. */
+    private const MAX_REGISTRATIONS_PER_HOUR = 10;
+
     /** Метаданные защищённого ресурса (RFC 9728). */
     public function resource(): void
     {
@@ -58,6 +61,13 @@ class OauthController extends BaseController
         }
         if ((int) ComponentHelper::getParams('com_dharma_mcp')->get('oauth_registration', 1) !== 1) {
             $this->oauthError(new OauthException('access_denied', 'Client registration is disabled on this site.', 403));
+        }
+
+        // Регистрация открыта всем, поэтому с одного адреса принимается не больше десяти попыток в час: иначе один хост
+        // забил бы журнал и все 500 мест для программ, и настоящий Claude или ChatGPT не смог бы подключиться.
+        if ($this->registrationsFromIp((string) ($_SERVER['REMOTE_ADDR'] ?? '')) >= self::MAX_REGISTRATIONS_PER_HOUR) {
+            header('Retry-After: 3600');
+            $this->oauthError(new OauthException('temporarily_unavailable', 'Too many registration attempts from this address; try again later.', 429));
         }
 
         $meta = json_decode((string) file_get_contents('php://input'), true);
@@ -165,6 +175,28 @@ class OauthController extends BaseController
             $_SERVER['REMOTE_ADDR'] ?? null,
             isset($_SERVER['HTTP_USER_AGENT']) ? substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 255) : null
         );
+    }
+
+    /** Сколько попыток регистрации с этого адреса записано в журнал за последний час. */
+    private function registrationsFromIp(string $ip): int
+    {
+        try {
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $since = Factory::getDate('-1 hour')->toSql();
+            $query = $db->createQuery()
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__dharma_mcp_logs'))
+                ->where($db->quoteName('method') . ' = ' . $db->quote('oauth/register'))
+                ->where($db->quoteName('ip') . ' = :ip')
+                ->where($db->quoteName('created') . ' > :since')
+                ->bind(':ip', $ip)
+                ->bind(':since', $since);
+
+            return (int) $db->setQuery($query)->loadResult();
+        } catch (\Throwable) {
+            // Счётчик не должен ломать регистрацию.
+            return 0;
+        }
     }
 
     private function oauthServer(): OauthServer

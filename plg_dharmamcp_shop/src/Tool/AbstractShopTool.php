@@ -40,6 +40,10 @@ abstract class AbstractShopTool extends AbstractTool
             throw ToolException::notFound('Dharma Shop (com_dharmashop) is not installed or is disabled on this site.');
         }
 
+        // Как при входе в админку магазина: модели магазина сами права не проверяют, и без этого пользователь с одной лишь
+        // областью shop:read видел бы черновики, остатки и настройки, закрытые для него в Joomla.
+        $context->requireCan('core.manage', 'com_dharmashop', 'use the shop tools');
+
         // Тексты ошибок служб магазина — языковые константы административной части.
         $context->app->getLanguage()->load('com_dharmashop', JPATH_ADMINISTRATOR);
 

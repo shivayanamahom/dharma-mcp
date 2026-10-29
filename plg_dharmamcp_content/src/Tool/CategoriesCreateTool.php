@@ -76,7 +76,7 @@ final class CategoriesCreateTool extends AbstractContentTool
             'published' => 0,
             'access' => 1,
             'language' => '*',
-            'description' => self::optionalString($arguments, 'description') ?? '',
+            'description' => self::filterHtml(self::optionalString($arguments, 'description') ?? ''),
             'params' => [],
             'metadata' => [],
         ];

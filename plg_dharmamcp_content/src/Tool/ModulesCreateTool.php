@@ -74,7 +74,7 @@ final class ModulesCreateTool extends AbstractContentTool
             'access' => 1,
             'showtitle' => \array_key_exists('show_title', $arguments) && !$arguments['show_title'] ? 0 : 1,
             'language' => '*',
-            'content' => self::requireString($arguments, 'content'),
+            'content' => self::filterHtml(self::requireString($arguments, 'content')),
             'params' => ['prepare_content' => 0, 'backgroundimage' => '', 'layout' => '_:default', 'moduleclass_sfx' => '', 'cache' => 1, 'cache_time' => 900, 'cachemode' => 'static', 'style' => '0'],
             'assignment' => 0,
             'assigned' => [],

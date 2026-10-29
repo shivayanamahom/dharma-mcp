@@ -15,6 +15,7 @@ namespace Dharma\Plugin\DharmaMcp\Shop\Tool;
 \defined('_JEXEC') or die;
 
 use Dharma\Component\DharmaMcp\Site\Tool\Access;
+use Dharma\Component\DharmaMcp\Site\Tool\ImageStore;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolContext;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 use Dharma\Component\DharmaShop\Administrator\Image\ImageUploader;
@@ -153,15 +154,7 @@ final class ImageUploadTool extends AbstractEntityTool
             throw ToolException::validation('The address must be a public https address without a login and a custom port.');
         }
 
-        $ips = gethostbynamel((string) $parts['host']) ?: [];
-        if ($ips === []) {
-            throw ToolException::validation('The address could not be resolved.');
-        }
-        foreach ($ips as $ip) {
-            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-                throw ToolException::validation('The address points to a private network and is refused.');
-            }
-        }
+        ImageStore::assertPublicHost((string) $parts['host']);
 
         try {
             $http = HttpFactory::getHttp(['follow_location' => false, 'timeout' => 15]);

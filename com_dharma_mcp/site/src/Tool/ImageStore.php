@@ -156,6 +156,80 @@ final class ImageStore
     }
 
     /**
+     * Узел должен вести только на общедоступные адреса. Проверяются и IPv4, и IPv6 (записи AAAA): иначе узел с публичным A и
+     * адресом ::1 в AAAA прошёл бы проверку, а клиент HTTP сходил бы по IPv6 во внутреннюю сеть.
+     *
+     * @throws ToolException
+     */
+    public static function assertPublicHost(string $host): void
+    {
+        $host = trim($host, '[]');
+
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            $ips = [$host];
+        } else {
+            $ips = gethostbynamel($host) ?: [];
+            foreach ((@dns_get_record($host, DNS_AAAA) ?: []) as $record) {
+                if (!empty($record['ipv6'])) {
+                    $ips[] = (string) $record['ipv6'];
+                }
+            }
+        }
+
+        if ($ips === []) {
+            throw ToolException::validation('The address could not be resolved.');
+        }
+        foreach ($ips as $ip) {
+            if (!self::isPublicIp($ip)) {
+                throw ToolException::validation('The address points to a private network and is refused.');
+            }
+        }
+    }
+
+    /** Общедоступный ли адрес: не частные, не зарезервированные и не служебные сети (в том числе IPv4, вложенный в IPv6). */
+    private static function isPublicIp(string $ip): bool
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return false;
+        }
+
+        $packed = inet_pton($ip);
+        if ($packed === false) {
+            return false;
+        }
+
+        if (\strlen($packed) === 16) {
+            // IPv4-mapped (::ffff:a.b.c.d), NAT64 (64:ff9b::/96) и 6to4 (2002::/16) прячут IPv4: проверяем вложенный адрес.
+            if (str_starts_with($packed, str_repeat("\0", 10) . "\xff\xff") || str_starts_with($packed, "\x00\x64\xff\x9b" . str_repeat("\0", 8))) {
+                return self::isPublicIp(inet_ntop(substr($packed, 12, 4)) ?: '');
+            }
+            if (str_starts_with($packed, "\x20\x02")) {
+                return self::isPublicIp(inet_ntop(substr($packed, 2, 4)) ?: '');
+            }
+            // Site-local fec0::/10 и уникальные локальные fc00::/7 (последние PHP тоже знает, но не во всех версиях).
+            $first = \ord($packed[0]);
+            $second = \ord($packed[1]);
+
+            return !(($first & 0xfe) === 0xfc || ($first === 0xfe && ($second & 0xc0) === 0xc0));
+        }
+
+        $long = ip2long($ip);
+        if ($long === false) {
+            return false;
+        }
+        // Общее адресное пространство операторов (100.64.0.0/10, там бывают метаданные облака), стенды тестов и служебные сети.
+        foreach (['100.64.0.0/10', '198.18.0.0/15', '192.0.0.0/24', '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24', '224.0.0.0/3'] as $net) {
+            [$base, $bits] = explode('/', $net);
+            $mask = (~0 << (32 - (int) $bits)) & 0xFFFFFFFF;
+            if (($long & $mask) === (ip2long($base) & $mask)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Скачивание по https с защитой от обращения к внутренним адресам: имя узла должно указывать на публичные адреса,
      * перенаправления не выполняются.
      *
@@ -168,15 +242,7 @@ final class ImageStore
             throw ToolException::validation('The address must be a public https address without a login and a custom port.');
         }
 
-        $ips = gethostbynamel((string) $parts['host']) ?: [];
-        if ($ips === []) {
-            throw ToolException::validation('The address could not be resolved.');
-        }
-        foreach ($ips as $ip) {
-            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-                throw ToolException::validation('The address points to a private network and is refused.');
-            }
-        }
+        self::assertPublicHost((string) $parts['host']);
 
         try {
             $response = HttpFactory::getHttp(['follow_location' => false, 'timeout' => 15])->get($url, ['Accept' => 'image/*'], 15);

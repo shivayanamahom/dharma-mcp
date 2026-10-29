@@ -94,7 +94,7 @@ final class ModulesUpdateTool extends AbstractContentTool
             if (!\is_string($arguments['content'])) {
                 throw ToolException::validation("Parameter 'content' must be a string.");
             }
-            $changes['content'] = $arguments['content'];
+            $changes['content'] = self::filterHtml($arguments['content']);
         }
         if (\array_key_exists('params', $arguments)) {
             if (!\is_array($arguments['params']) || $arguments['params'] === []) {

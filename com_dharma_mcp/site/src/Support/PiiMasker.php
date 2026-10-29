@@ -173,11 +173,28 @@ final class PiiMasker
         return $result;
     }
 
+    /** Имена ключей, значения которых — пароли, токены и ключи: в журнал они не попадают на любой глубине. */
+    private const SECRET_KEY_PATTERN = '/(pass(?:word|wd)|secret|token|api[_-]?key|private[_-]?key|authorization|credential|_key$)/i';
+
     public static function sanitizeLogArguments(array $arguments): array
     {
-        $clean = $arguments;
-        unset($clean['password'], $clean['token'], $clean['secret'], $clean['api_key']);
+        return self::maskArray(self::redactSecrets($arguments), false, true);
+    }
 
-        return self::maskArray($clean, false, true);
+    /**
+     * Заменяет значения секретных ключей (например, options.telegram_bot_token в shop.settings_set) на метку.
+     * Раньше убирались только четыре ключа верхнего уровня, и вложенные секреты записывались в журнал открытым текстом.
+     */
+    private static function redactSecrets(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (\is_string($key) && preg_match(self::SECRET_KEY_PATTERN, $key) === 1) {
+                $data[$key] = '[REDACTED]';
+            } elseif (\is_array($value)) {
+                $data[$key] = self::redactSecrets($value);
+            }
+        }
+
+        return $data;
     }
 }

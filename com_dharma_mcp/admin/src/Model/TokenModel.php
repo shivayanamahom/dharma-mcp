@@ -14,6 +14,7 @@ namespace Dharma\Component\DharmaMcp\Administrator\Model;
 
 \defined('_JEXEC') or die;
 
+use Dharma\Component\DharmaMcp\Site\Oauth\OauthServer;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Model\AdminModel;
@@ -60,6 +61,10 @@ class TokenModel extends AdminModel
      */
     public function save($data): bool
     {
+        if (!$this->checkIssuingRights((array) $data)) {
+            return false;
+        }
+
         $raw = null;
 
         if (empty($data['id'])) {
@@ -74,6 +79,46 @@ class TokenModel extends AdminModel
 
         if ($raw !== null) {
             Factory::getApplication()->getSession()->set('com_dharma_mcp.raw_token', $raw);
+        }
+
+        return true;
+    }
+
+    /**
+     * Токен действует от имени своего пользователя, поэтому выдать токен другому пользователю или с областями
+     * «Шаблон» и «Система» вправе только Суперпользователь. Иначе тот, у кого есть лишь право «Создать» или «Изменить»
+     * в этом компоненте, выписал бы себе токен Суперпользователя и получил его возможности.
+     *
+     * @param   array<string, mixed>  $data
+     */
+    private function checkIssuingRights(array $data): bool
+    {
+        $identity = Factory::getApplication()->getIdentity();
+        if ($identity->authorise('core.admin')) {
+            return true;
+        }
+
+        if ((int) ($data['user_id'] ?? 0) !== (int) $identity->id) {
+            $this->setError(Text::_('COM_DHARMA_MCP_TOKEN_ERROR_OTHER_USER'));
+
+            return false;
+        }
+
+        if (!empty($data['id'])) {
+            $table = $this->getTable();
+            if (!$table->load((int) $data['id']) || (int) $table->user_id !== (int) $identity->id) {
+                $this->setError(Text::_('COM_DHARMA_MCP_TOKEN_ERROR_OTHER_USER'));
+
+                return false;
+            }
+        }
+
+        foreach ((array) ($data['scopes'] ?? []) as $scope) {
+            if (OauthServer::SCOPES[$scope] ?? false) {
+                $this->setError(Text::_('COM_DHARMA_MCP_TOKEN_ERROR_SUPER_SCOPES'));
+
+                return false;
+            }
         }
 
         return true;
@@ -103,6 +148,12 @@ class TokenModel extends AdminModel
 
         if ((string) $table->kind !== 'manual') {
             throw new \RuntimeException(Text::_('COM_DHARMA_MCP_TOKEN_REGENERATE_OAUTH'));
+        }
+
+        // Новое значение показывается тому, кто нажал кнопку: чужой токен пересоздать может только Суперпользователь.
+        $identity = Factory::getApplication()->getIdentity();
+        if (!$identity->authorise('core.admin') && (int) $table->user_id !== (int) $identity->id) {
+            throw new \RuntimeException(Text::_('COM_DHARMA_MCP_TOKEN_ERROR_OTHER_USER'));
         }
 
         $raw = self::newSecret();
