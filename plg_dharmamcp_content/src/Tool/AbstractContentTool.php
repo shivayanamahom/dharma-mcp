@@ -18,6 +18,7 @@ use Dharma\Component\DharmaMcp\Site\Tool\AbstractTool;
 use Dharma\Component\DharmaMcp\Site\Tool\ImageStore;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolContext;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
+use Joomla\CMS\Component\ComponentHelper;
 
 /**
  * Общее для инструментов набора. Все изменения идут через штатные административные модели Joomla
@@ -90,6 +91,16 @@ abstract class AbstractContentTool extends AbstractTool
     public function getPack(): string
     {
         return 'content';
+    }
+
+    /**
+     * HTML-текст так же, как при сохранении в админке: фильтр «Параметры → Текстовые фильтры» для групп пользователя токена.
+     * Инструменты сохраняют через model->save() без проверки формы, где этот фильтр обычно применяется, поэтому без него
+     * пользователь с ограниченным фильтром (например, Менеджер) записал бы в материал или модуль скрипты.
+     */
+    protected static function filterHtml(string $text): string
+    {
+        return \is_callable([ComponentHelper::class, 'filterText']) ? (string) ComponentHelper::filterText($text) : $text;
     }
 
     /** Подгружает административные языковые файлы, чтобы тексты ошибок моделей были читаемыми. */

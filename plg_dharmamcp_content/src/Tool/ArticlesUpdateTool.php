@@ -91,7 +91,7 @@ final class ArticlesUpdateTool extends AbstractContentTool
             } elseif (\in_array($field, ['title'], true) && trim($value) === '') {
                 throw ToolException::validation('Title must not be empty.');
             } else {
-                $changes[$joomla] = $value;
+                $changes[$joomla] = $joomla === 'articletext' ? self::filterHtml($value) : $value;
             }
         }
 

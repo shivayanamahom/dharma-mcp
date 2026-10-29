@@ -77,7 +77,7 @@ final class ArticlesCreateTool extends AbstractContentTool
             'featured' => 0,
             'access' => 1,
             'language' => '*',
-            'articletext' => self::optionalString($arguments, 'text') ?? '',
+            'articletext' => self::filterHtml(self::optionalString($arguments, 'text') ?? ''),
             'metadesc' => self::optionalString($arguments, 'meta_description') ?? '',
             'metakey' => self::optionalString($arguments, 'meta_keywords') ?? '',
             'created_by' => (int) $context->user()->id,
