@@ -77,6 +77,8 @@ abstract class AbstractEntityTool extends AbstractShopTool
             );
         }
 
+        $context->requireCan('core.manage', $component, 'use this part of the shop');
+
         // Поля форм магазина при создании обращаются к документу страницы; в запросе к MCP его нет, поэтому создаётся пустой.
         if ($context->app->getDocument() === null) {
             $context->app->loadDocument(\Joomla\CMS\Factory::getContainer()->get(\Joomla\CMS\Document\FactoryInterface::class)->createDocument('html'));
