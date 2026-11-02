@@ -71,7 +71,7 @@ try:
     check(raw(d,'qa-mcp-fields-text')=='6','create saves custom fields')
     check(raw(d,'qa-mcp-fields-list')=='Joomla 6','list value readback')
     harness=str(pathlib.Path(__file__).resolve().parents[1]/'web-harness.php')
-    native_form=subprocess.run([PHP,'-d','mysqli.default_socket=/Users/mksim/.kettle/run/mysql.sock',harness,'admin',f'option=com_content&view=article&layout=edit&id={a}'],capture_output=True,text=True,check=True).stdout
+    native_form=subprocess.run([PHP,'-d','mysqli.default_socket=/Users/mksim/.kettle/run/mysql.sock',harness,'admin',f'option=com_content&view=article&layout=edit&id={a}','GET','{}',json.dumps({'registry':{'com_content':{'edit':{'article':{'id':[a]}}}}})],capture_output=True,text=True,check=True).stdout
     check('jform[com_fields][qa-mcp-fields-text]' in native_form and 'Joomla 6' in native_form,'native Joomla article editor includes the fields')
     confirmed('articles.update',{'id':a,'custom_fields':{'qa-mcp-fields-text':'5 и 6'}})
     d=call('articles.get',{'id':a})

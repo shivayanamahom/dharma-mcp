@@ -60,9 +60,11 @@ $userId = (int) $db->loadResult();
 
 $app->getDispatcher()->addListener('onAfterInitialise', function () use ($app, $container, $userId, $sessionValues) {
     foreach ($sessionValues as $k => $v) {
-        $app->getSession()->set($k, $v);
+        $app->getSession()->set($k, $k === 'registry' && is_array($v) ? new \Joomla\Registry\Registry($v) : $v);
     }
     $app->loadIdentity($container->get(\Joomla\CMS\User\UserFactoryInterface::class)->loadUserById($userId));
+    // Legacy Joomla helpers use the session user in this dev-only simulated login.
+    $app->getSession()->set('user', $app->getIdentity());
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = \Joomla\CMS\Session\Session::getFormToken();
         $_POST[$token] = 1;
