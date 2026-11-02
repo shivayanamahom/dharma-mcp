@@ -20,6 +20,7 @@ use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 use Joomla\CMS\Cache\CacheControllerFactoryInterface;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Table\Menu as MenuTable;
+use Joomla\CMS\Table\Module as ModuleTable;
 use Joomla\Registry\Registry;
 
 /**
@@ -275,7 +276,7 @@ final class ModulesUpdateTool extends AbstractContentTool
         }
         $this->lang($context, 'com_modules');
 
-        $table = $context->table('com_modules', 'Module');
+        $table = new ModuleTable($context->db);
         if (!$table->load($id)) {
             throw ToolException::notFound("Module $id not found.");
         }
