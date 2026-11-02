@@ -34,7 +34,7 @@ final class ArticlesCreateTool extends AbstractContentTool
         return 'Creates a new article as an UNPUBLISHED draft (visitors cannot see it) in the given category. '
             . 'The text is HTML. Tell the owner the article id so they can review it; publish it only after they agree, with articles.set_state. '
             . 'Find category ids with categories.list. '
-            . 'Images: upload a file with media.image_upload, then pass its path as image_intro (blog/list views) and/or image_fulltext (article page), with alt text in image_intro_alt / image_fulltext_alt.';
+            . 'Custom field values can be supplied by machine name in custom_fields (text, url, single-select list). Images: upload a file with media.image_upload, then pass its path as image_intro (blog/list views) and/or image_fulltext (article page), with alt text in image_intro_alt / image_fulltext_alt.';
     }
 
     public function getRequiredScope(): string
@@ -56,7 +56,7 @@ final class ArticlesCreateTool extends AbstractContentTool
             'alias' => self::str('URL alias (optional; made from the title when empty).'),
             'meta_description' => self::str('SEO description, up to about 160 characters.'),
             'meta_keywords' => self::str('SEO keywords, comma separated.'),
-        ] + self::imageProperties(), ['title', 'category_id']);
+        ] + self::imageProperties() + self::customFieldProperties(), ['title', 'category_id']);
     }
 
     public function execute(array $arguments, ToolContext $context): array
@@ -88,7 +88,10 @@ final class ArticlesCreateTool extends AbstractContentTool
             'version_note' => 'Created through Dharma MCP',
         ];
 
-        if (!$model->save($data)) {
+        if (array_key_exists('custom_fields', $arguments)) {
+            $data['com_fields'] = ArticleFields::validateValues($arguments['custom_fields'], (object) ['id' => 0, 'catid' => $categoryId], $context);
+        }
+        if (!ArticleFields::withIdentity($context, static fn () => $model->save($data))) {
             throw self::modelFailure($model, 'Joomla could not save the article');
         }
 

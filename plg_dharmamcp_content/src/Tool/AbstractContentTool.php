@@ -28,6 +28,11 @@ abstract class AbstractContentTool extends AbstractTool
     /** Состояния публикации Joomla. */
     protected const STATES = ['published' => 1, 'unpublished' => 0, 'archived' => 2, 'trashed' => -2];
 
+    protected static function customFieldProperties(): array
+    {
+        return ['custom_fields' => ['type' => 'object', 'description' => 'Patch article custom field values by machine name (text, url, single-select list). Empty string clears a value; omitted fields stay unchanged. Only published fields assigned to the article category are accepted.', 'additionalProperties' => ['type' => 'string']]];
+    }
+
     /** Картинки статьи: поле инструмента => ключ в параметре images статьи Joomla. */
     protected const IMAGE_FIELDS = [
         'image_intro' => 'image_intro',
