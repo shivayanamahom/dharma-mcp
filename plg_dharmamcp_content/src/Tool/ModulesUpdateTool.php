@@ -19,12 +19,11 @@ use Dharma\Component\DharmaMcp\Site\Tool\ToolContext;
 use Dharma\Component\DharmaMcp\Site\Tool\ToolException;
 use Joomla\CMS\Cache\CacheControllerFactoryInterface;
 use Joomla\CMS\Factory;
-use Joomla\CMS\Table\Module as ModuleTable;
+use Joomla\CMS\Table\Menu as MenuTable;
 use Joomla\Registry\Registry;
 
 /**
- * Правка модуля сайта через таблицу Joomla. Привязка к страницам меню (#__modules_menu) не затрагивается:
- * поэтому не используется ModuleModel::save(), который пересоздаёт привязку.
+ * Правка модуля сайта и привязки к страницам через штатную модель Joomla.
  */
 final class ModulesUpdateTool extends AbstractContentTool
 {
@@ -41,8 +40,9 @@ final class ModulesUpdateTool extends AbstractContentTool
     public function getDescription(): string
     {
         return 'Changes a site module: title, template position, whether the title is shown, the HTML content of a custom module (mod_custom), '
-            . 'and individual parameters (merged into the existing ones). Pages the module is shown on are not touched. '
-            . 'The change is live immediately, so the user must confirm. Read the module with modules.get first.';
+            . 'individual parameters (merged into the current ones), and optionally its menu-page assignment. '
+            . 'When menu_assignment is omitted, the current assignment is preserved. The change is live immediately, so the user must confirm. '
+            . 'Read the module with modules.get and menu items with menus.items first.';
     }
 
     public function getRequiredScope(): string
@@ -69,6 +69,21 @@ final class ModulesUpdateTool extends AbstractContentTool
             'show_title' => self::bool('Whether the module title is shown to visitors.'),
             'content' => self::str('New HTML for a custom module (mod_custom only).'),
             'params' => ['type' => 'object', 'description' => 'Parameters to set; they are merged into the current ones.'],
+            'menu_assignment' => [
+                'type' => 'object',
+                'description' => 'Optional page assignment: mode is all, none, only, or except. For only/except, provide menu_item_ids from menus.items. Omit this object to preserve the existing assignment.',
+                'properties' => [
+                    'mode' => ['type' => 'string', 'enum' => ['all', 'none', 'only', 'except']],
+                    'menu_item_ids' => [
+                        'type' => 'array',
+                        'items' => ['type' => 'integer', 'minimum' => 2],
+                        'maxItems' => 100,
+                        'uniqueItems' => true,
+                    ],
+                ],
+                'required' => ['mode'],
+                'additionalProperties' => false,
+            ],
         ], ['id']);
     }
 
@@ -85,6 +100,9 @@ final class ModulesUpdateTool extends AbstractContentTool
             }
         }
         if (\array_key_exists('show_title', $arguments)) {
+            if (!\is_bool($arguments['show_title'])) {
+                throw ToolException::validation("Parameter 'show_title' must be a boolean.");
+            }
             $changes['showtitle'] = $arguments['show_title'] ? 1 : 0;
         }
         if (\array_key_exists('content', $arguments)) {
@@ -102,11 +120,110 @@ final class ModulesUpdateTool extends AbstractContentTool
             }
             $changes['params'] = $arguments['params'];
         }
-        if ($changes === []) {
-            throw ToolException::validation('Pass at least one field to change.');
+        return $changes;
+    }
+
+    /**
+     * Validate a requested menu assignment and return Joomla ModuleModel values.
+     *
+     * @return array{assignment:int|string,assigned:int[],mode:string,pages:int[]}|null
+     */
+    private function menuAssignment(array $arguments, ToolContext $context): ?array
+    {
+        if (!\array_key_exists('menu_assignment', $arguments)) {
+            return null;
         }
 
-        return $changes;
+        $value = $arguments['menu_assignment'];
+        if (!\is_array($value) || !isset($value['mode']) || !\is_string($value['mode'])) {
+            throw ToolException::validation("Parameter 'menu_assignment' must contain a mode.");
+        }
+
+        $mode = $value['mode'];
+        if (!\in_array($mode, ['all', 'none', 'only', 'except'], true)) {
+            throw ToolException::validation("Parameter 'menu_assignment.mode' must be all, none, only, or except.");
+        }
+
+        $ids = $value['menu_item_ids'] ?? [];
+        if (!\is_array($ids) || !array_is_list($ids) || \count($ids) > 100) {
+            throw ToolException::validation("Parameter 'menu_assignment.menu_item_ids' must be an array of up to 100 menu item ids.");
+        }
+        foreach ($ids as $menuId) {
+            if (!\is_int($menuId) || $menuId < 2) {
+                throw ToolException::validation('Menu item ids must be integers greater than 1.');
+            }
+        }
+        if (\count(array_unique($ids)) !== \count($ids)) {
+            throw ToolException::validation('Duplicate menu item ids are not allowed.');
+        }
+
+        if (\in_array($mode, ['only', 'except'], true) && $ids === []) {
+            throw ToolException::validation("Parameter 'menu_assignment.menu_item_ids' must not be empty for mode '$mode'.");
+        }
+        if (\in_array($mode, ['all', 'none'], true) && $ids !== []) {
+            throw ToolException::validation("Parameter 'menu_assignment.menu_item_ids' must be empty for mode '$mode'.");
+        }
+
+        if ($ids !== []) {
+            $this->lang($context, 'com_menus');
+            foreach ($ids as $menuId) {
+                $menu = new MenuTable($context->db);
+                if (!$menu->load($menuId) || (int) $menu->client_id !== 0 || (string) $menu->menutype === '') {
+                    throw ToolException::notFound("Site menu item $menuId not found.");
+                }
+                if ((int) $menu->published === -2) {
+                    throw ToolException::validation("Menu item $menuId is in the trash.");
+                }
+
+                $query = $context->db->createQuery()
+                    ->select($context->db->quoteName('id'))
+                    ->from($context->db->quoteName('#__menu_types'))
+                    ->where($context->db->quoteName('menutype') . ' = :menutype')
+                    ->bind(':menutype', $menu->menutype);
+                $menuTypeId = (int) $context->db->setQuery($query)->loadResult();
+                if ($menuTypeId < 1) {
+                    throw ToolException::notFound("Menu type for menu item $menuId not found.");
+                }
+                $context->requireCan('core.edit', 'com_menus.menu.' . $menuTypeId, 'edit this menu item');
+            }
+        }
+
+        return [
+            'assignment' => match ($mode) {
+                'all' => 0,
+                'none' => '-',
+                'only' => 1,
+                'except' => -1,
+            },
+            'assigned' => $ids,
+            'mode' => $mode,
+            'pages' => $ids,
+        ];
+    }
+
+    /** @return array{assignment:int|string,assigned:int[],mode:string,menu_item_ids:int[]} */
+    private function currentMenuAssignment(ToolContext $context, int $id): array
+    {
+        $current = ModulesGetTool::assignment($context, $id);
+        $mode = match ($current['assignment']) {
+            'all pages' => 'all',
+            'none' => 'none',
+            'only the listed pages' => 'only',
+            'all pages except the listed' => 'except',
+            default => 'none',
+        };
+
+        return [
+            'assignment' => match ($mode) {
+                'all' => 0,
+                'only' => 1,
+                'except' => -1,
+                default => '-',
+            },
+            'assigned' => $current['pages'],
+            'mode' => $mode,
+            'menu_item_ids' => $current['pages'],
+        ];
     }
 
     private function authorize(ToolContext $context, int $id): void
@@ -120,11 +237,22 @@ final class ModulesUpdateTool extends AbstractContentTool
         $row = ModulesGetTool::row($context, $id);
         $this->authorize($context, $id);
         $changes = $this->changes($arguments, $row);
+        $requestedAssignment = $this->menuAssignment($arguments, $context);
+        if ($changes === [] && $requestedAssignment === null) {
+            throw ToolException::validation('Pass at least one field to change.');
+        }
 
         $diff = [];
         foreach ($changes as $key => $new) {
             $old = $key === 'params' ? '(parameters merged)' : ($row->$key ?? null);
             $diff[$key] = ['from' => self::shorten($old), 'to' => self::shorten($new)];
+        }
+        if ($requestedAssignment !== null) {
+            $currentAssignment = $this->currentMenuAssignment($context, $id);
+            $diff['menu_assignment'] = [
+                'from' => ['mode' => $currentAssignment['mode'], 'menu_item_ids' => $currentAssignment['menu_item_ids']],
+                'to' => ['mode' => $requestedAssignment['mode'], 'menu_item_ids' => $requestedAssignment['pages']],
+            ];
         }
 
         return [
@@ -141,9 +269,13 @@ final class ModulesUpdateTool extends AbstractContentTool
         $row = ModulesGetTool::row($context, $id);
         $this->authorize($context, $id);
         $changes = $this->changes($arguments, $row);
+        $requestedAssignment = $this->menuAssignment($arguments, $context);
+        if ($changes === [] && $requestedAssignment === null) {
+            throw ToolException::validation('Pass at least one field to change.');
+        }
         $this->lang($context, 'com_modules');
 
-        $table = new ModuleTable($context->db);
+        $table = $context->table('com_modules', 'Module');
         if (!$table->load($id)) {
             throw ToolException::notFound("Module $id not found.");
         }
@@ -153,19 +285,49 @@ final class ModulesUpdateTool extends AbstractContentTool
             foreach ($changes['params'] as $key => $value) {
                 $registry->set((string) $key, $value);
             }
-            $changes['params'] = $registry->toString();
+            $changes['params'] = $registry->toArray();
         }
 
-        if (!$table->bind($changes) || !$table->check() || !$table->store()) {
-            throw ToolException::validation('Joomla could not save the module: ' . strip_tags((string) $table->getError()));
+        $assignment = $requestedAssignment ?? $this->currentMenuAssignment($context, $id);
+        $saveData = [
+            'id' => $id,
+            'title' => (string) $table->title,
+            'note' => (string) $table->note,
+            'module' => (string) $table->module,
+            'client_id' => (int) $table->client_id,
+            'position' => (string) $table->position,
+            'published' => (int) $table->published,
+            'access' => (int) $table->access,
+            'showtitle' => (int) $table->showtitle,
+            'language' => (string) $table->language,
+            'content' => (string) $table->content,
+            'params' => (new Registry((string) $table->params))->toArray(),
+            'assignment' => $assignment['assignment'],
+            'assigned' => $assignment['assigned'],
+        ];
+        $saveData = array_merge($saveData, $changes);
+
+        $model = $context->model('com_modules', 'Module');
+        if (!$model->save($saveData)) {
+            throw self::modelFailure($model, 'Joomla could not save the module');
         }
 
-        // Кэш модулей, иначе посетители увидят старую версию до истечения срока.
-        Factory::getContainer()->get(CacheControllerFactoryInterface::class)
-            ->createCacheController('callback', ['defaultgroup' => 'com_modules'])
-            ->clean();
+        // Модель пересоздаёт запись modules_menu; очистим связанные кэши.
+        $cache = Factory::getContainer()->get(CacheControllerFactoryInterface::class);
+        foreach (['_system', 'com_modules'] as $group) {
+            $cache->createCacheController('callback', ['defaultgroup' => $group])->clean();
+        }
 
-        return ['updated' => true, 'id' => $id, 'changed_fields' => array_keys($changes)];
+        if ($requestedAssignment !== null) {
+            $cache->createCacheController('callback', ['defaultgroup' => 'com_menus'])->clean();
+        }
+
+        return [
+            'updated' => true,
+            'id' => $id,
+            'changed_fields' => array_merge(array_keys($changes), $requestedAssignment !== null ? ['menu_assignment'] : []),
+            'shown_on' => ModulesGetTool::assignment($context, $id),
+        ];
     }
 
     private static function shorten(mixed $value): mixed

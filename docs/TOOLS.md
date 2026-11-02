@@ -99,7 +99,7 @@
 | `modules.list` | `content:read` | чтение | Lists the modules of the public site (blocks such as menus, custom HTML, banners, cart) with their template position and state. Filter by position, module type (e.g. mod_custom) or state. Use modules.get for the content and parameters. |
 | `modules.positions` | `content:read` | чтение | Lists the module positions of the active site template and the positions already used by modules, with how many modules sit in each. Use it to choose a position for modules.create_custom or modules.update. |
 | `modules.set_state` | `content:write` | запись | Publishes, unpublishes or moves to trash one site module. This changes what visitors see right away, so the user must confirm. |
-| `modules.update` | `content:write` | запись | Changes a site module: title, template position, whether the title is shown, the HTML content of a custom module (mod_custom), and individual parameters (merged into the existing ones). Pages the module is shown on are not touched. The change is live immediately, so the user must confirm. Read the module with modules.get first. |
+| `modules.update` | `content:write` | запись | Changes a site module: title, template position, whether the title is shown, the HTML content of a custom module (mod_custom), individual parameters (merged into the current ones), and optionally its menu-page assignment. When menu_assignment is omitted, the current assignment is preserved. The change is live immediately, so the user must confirm. Read the module with modules.get and menu items with menus.items first. |
 
 ## Шаблон
 
