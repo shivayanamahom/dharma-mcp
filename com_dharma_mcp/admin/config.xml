@@ -76,6 +76,45 @@
 			default="60" min="1" max="600" />
 	</fieldset>
 
+	<fieldset name="packs" label="COM_DHARMA_MCP_CONFIG_PACKS" description="COM_DHARMA_MCP_CONFIG_PACKS_DESC">
+		<field name="pack_shop" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_SHOP" description="COM_DHARMA_MCP_PACK_SHOP_DESC"
+			default="1" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field name="pack_radicalmart" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_RADICALMART" description="COM_DHARMA_MCP_PACK_RADICALMART_DESC"
+			default="1" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field name="pack_clinic" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_CLINIC" description="COM_DHARMA_MCP_PACK_CLINIC_DESC"
+			default="1" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field name="pack_content" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_CONTENT" description="COM_DHARMA_MCP_PACK_CONTENT_DESC"
+			default="1" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field name="pack_template" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_TEMPLATE" description="COM_DHARMA_MCP_PACK_TEMPLATE_DESC"
+			default="0" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+		<field name="pack_system" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_SYSTEM" description="COM_DHARMA_MCP_PACK_SYSTEM_DESC"
+			default="0" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
+	</fieldset>
+
 	<fieldset name="permissions" label="JCONFIG_PERMISSIONS_LABEL" description="JCONFIG_PERMISSIONS_DESC">
 		<field name="rules" type="rules" label="JCONFIG_PERMISSIONS_LABEL" class="inputbox"
 			validate="rules" filter="rules" component="com_dharma_mcp" section="component" />

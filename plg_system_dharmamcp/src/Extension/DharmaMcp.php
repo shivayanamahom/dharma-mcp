@@ -14,7 +14,11 @@ namespace Dharma\Plugin\System\DharmaMcp\Extension;
 
 \defined('_JEXEC') or die;
 
+use Dharma\Component\DharmaMcp\Site\Support\PackCatalog;
 use Joomla\CMS\Component\ComponentHelper;
+use Joomla\CMS\Event\Model\AfterSaveEvent;
+use Joomla\CMS\Event\Model\PrepareFormEvent;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Uri\Uri;
 use Joomla\Event\SubscriberInterface;
@@ -44,7 +48,94 @@ final class DharmaMcp extends CMSPlugin implements SubscriberInterface
 
     public static function getSubscribedEvents(): array
     {
-        return ['onAfterInitialise' => 'onAfterInitialise'];
+        return [
+            'onAfterInitialise' => 'onAfterInitialise',
+            'onContentPrepareForm' => 'onPrepareForm',
+            'onExtensionAfterSave' => 'onAfterSave',
+        ];
+    }
+
+    /** Это страница настроек компонента Dharma MCP (штатный com_config)? */
+    private function isMcpOptions(string $context): bool
+    {
+        return $context === 'com_config.component'
+            && $this->getApplication()->isClient('administrator')
+            && $this->getApplication()->getInput()->getCmd('component') === 'com_dharma_mcp';
+    }
+
+    /** Наборы продуктов, которых нет на сайте, включить нельзя: переключатель заблокирован и объяснён. */
+    public function onPrepareForm(PrepareFormEvent $event): void
+    {
+        $form = $event->getForm();
+
+        if ($form->getName() !== 'com_config.component' || !$this->isMcpOptions('com_config.component')) {
+            return;
+        }
+
+        // Настоящее состояние плагинов — значение по умолчанию переключателя (сохранённых значений набор не хранит, см. onAfterSave).
+        foreach (array_keys(PackCatalog::PACKS) as $key) {
+            $field = PackCatalog::field($key);
+            $available = PackCatalog::available($key);
+            $form->setFieldAttribute($field, 'default', $available && PackCatalog::enabled($key) ? '1' : '0');
+
+            if (!$available) {
+                $form->setFieldAttribute($field, 'disabled', 'true');
+                $form->setFieldAttribute($field, 'description', 'COM_DHARMA_MCP_PACK_NOT_INSTALLED');
+            }
+        }
+    }
+
+    /** По «Сохранить» включает и выключает плагины наборов по переключателям. */
+    public function onAfterSave(AfterSaveEvent $event): void
+    {
+        if (!$this->isMcpOptions($event->getContext())) {
+            return;
+        }
+
+        $app = $this->getApplication();
+        $data = $event->getData();
+        $params = \is_array($data) ? (array) ($data['params'] ?? []) : [];
+        $changed = [];
+
+        foreach (PackCatalog::PACKS as $key => $definition) {
+            $field = PackCatalog::field($key);
+
+            if (!\array_key_exists($field, $params) || !PackCatalog::available($key)) {
+                continue;
+            }
+
+            $on = (int) $params[$field] === 1;
+
+            // Файлы и настройки сайта через MCP открывает только Суперпользователь.
+            if (PackCatalog::dangerous($key) && !$app->getIdentity()->authorise('core.admin')) {
+                if ($on !== PackCatalog::enabled($key)) {
+                    $app->enqueueMessage(Text::sprintf('COM_DHARMA_MCP_PACK_SUPER_ONLY', Text::_('COM_DHARMA_MCP_PACK_' . strtoupper($key))), 'warning');
+                }
+
+                continue;
+            }
+
+            if (PackCatalog::set($key, $on)) {
+                $changed[] = Text::_('COM_DHARMA_MCP_PACK_' . strtoupper($key)) . ' — ' . Text::_($on ? 'JENABLED' : 'JDISABLED');
+            }
+        }
+
+        if ($changed) {
+            $app->enqueueMessage(Text::sprintf('COM_DHARMA_MCP_PACK_CHANGED', implode('; ', $changed)));
+        }
+
+        // Состояние наборов хранят сами плагины: сохранённые значения переключателей убираем, чтобы они не «залипали».
+        $table = $event->getItem();
+        $stored = json_decode((string) ($table->params ?? ''), true);
+
+        if (\is_array($stored)) {
+            $clean = array_diff_key($stored, array_flip(array_map([PackCatalog::class, 'field'], array_keys(PackCatalog::PACKS))));
+
+            if ($clean !== $stored) {
+                $table->params = json_encode($clean);
+                $table->store();
+            }
+        }
     }
 
     public function onAfterInitialise(): void

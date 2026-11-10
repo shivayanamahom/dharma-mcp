@@ -34,6 +34,11 @@ final class Clinic extends CMSPlugin implements SubscriberInterface
 
     public function onRegisterTools(RegisterToolsEvent $event): void
     {
+        // Без продукта набор не нужен: его инструменты не должны засорять список ассистента.
+        if (!\Joomla\CMS\Component\ComponentHelper::isEnabled('com_dharmaclinic')) {
+            return;
+        }
+
         foreach (glob(\dirname(__DIR__) . '/Tool/*Tool.php') ?: [] as $file) {
             $class = 'Dharma\\Plugin\\DharmaMcp\\Clinic\\Tool\\' . basename($file, '.php');
             if (!class_exists($class) || !is_subclass_of($class, ToolInterface::class) || (new \ReflectionClass($class))->isAbstract()) {
