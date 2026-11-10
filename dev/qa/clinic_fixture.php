@@ -48,7 +48,7 @@ if ($action === 'seed') {
     $db->setQuery('SELECT id FROM #__users WHERE block = 0 AND id <> ' . $uid . ' LIMIT 30');
     foreach ($db->loadColumn() as $candidate) {
         $user = Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById((int) $candidate);
-        if ($user->authorise('core.manage', 'com_dharmaclinic') || $user->authorise('core.edit', 'com_dharmaclinic')) { continue; }
+        if ($user->authorise('core.manage', 'com_dharmaclinic')) { continue; }
         $make('restricted', ['clinic:read', 'clinic:write'], (int) $candidate);
         break;
     }
@@ -71,6 +71,26 @@ if ($action === 'mode') {
     $table->store();
     file_put_contents($file, json_encode($data));
     echo "Mode: $mode\n";
+} elseif ($action === 'rows') {
+    // Две QA-записи для сценариев заявок и отзывов; номера кладутся в файл фикстуры.
+    $db->setQuery("INSERT INTO #__dharmaclinic_leads (form_id,kind,status_id,name,phone,email,message,page_url,ip_hash,external_id,state,created) VALUES (NULL,'question',(SELECT id FROM #__dharmaclinic_lead_statuses WHERE state = 1 ORDER BY ordering, id LIMIT 1),'QA-MCP-CL Пациент','+7 900 111-22-33','qa@example.test','QA-MCP-CL вопрос про подготовку','https://example.test/',REPEAT('0',64),'',1,UTC_TIMESTAMP())")->execute();
+    $data['lead_id'] = (int) $db->insertid();
+    $db->setQuery("INSERT INTO #__dharmaclinic_reviews (object_type,object_id,rating,body,author_name,status,source,created) VALUES (1,(SELECT id FROM #__dharmaclinic_doctors ORDER BY id LIMIT 1),5,'QA-MCP-CL отзыв','QA-MCP-CL Автор',0,1,UTC_TIMESTAMP())")->execute();
+    $data['review_id'] = (int) $db->insertid();
+    file_put_contents($file, json_encode($data));
+    echo "QA rows: lead {$data['lead_id']}, review {$data['review_id']}\n";
+} elseif ($action === 'pii') {
+    // Временно включает/выключает «персональные данные» на сервере MCP (по умолчанию выключено); cleanup возвращает прежнее значение.
+    $on = ($argv[2] ?? 'on') === 'on';
+    $table = \Joomla\CMS\Table\Table::getInstance('Extension');
+    $table->load(['element' => 'com_dharma_mcp', 'type' => 'component']);
+    $params = json_decode($table->params, true) ?: [];
+    if (!array_key_exists('original_pii', $data)) { $data['original_pii'] = $params['pii_enabled'] ?? null; }
+    $params['pii_enabled'] = $on ? 1 : 0;
+    $table->params = json_encode($params);
+    $table->store();
+    file_put_contents($file, json_encode($data));
+    echo 'PII: ' . ($on ? 'on' : 'off') . "\n";
 } elseif ($action === 'cleanup') {
     foreach ($data['token_ids'] ?? [] as $id) {
         $table = $mvc->createTable('Token', 'Administrator');
@@ -84,6 +104,20 @@ if ($action === 'mode') {
         $table->params = json_encode($params);
         $table->store();
     }
+    if (array_key_exists('original_pii', $data)) {
+        $table = \Joomla\CMS\Table\Table::getInstance('Extension');
+        $table->load(['element' => 'com_dharma_mcp', 'type' => 'component']);
+        $params = json_decode($table->params, true) ?: [];
+        if ($data['original_pii'] === null) { unset($params['pii_enabled']); } else { $params['pii_enabled'] = $data['original_pii']; }
+        $table->params = json_encode($params);
+        $table->store();
+    }
+    // QA-заявки, отзывы и вопросы-из-заявок (точно по пометке QA-MCP-CL).
+    $db->setQuery("DELETE q FROM #__dharmaclinic_questions q JOIN #__dharmaclinic_leads l ON l.id = q.lead_id WHERE l.name LIKE 'QA-MCP-CL%'")->execute();
+    $db->setQuery("DELETE g FROM #__dharmaclinic_lead_log g JOIN #__dharmaclinic_leads l ON l.id = g.lead_id WHERE l.name LIKE 'QA-MCP-CL%'")->execute();
+    $db->setQuery("DELETE FROM #__dharmaclinic_leads WHERE name LIKE 'QA-MCP-CL%'")->execute();
+    $db->setQuery("DELETE g FROM #__dharmaclinic_review_log g JOIN #__dharmaclinic_reviews r ON r.id = g.review_id WHERE r.author_name LIKE 'QA-MCP-CL%'")->execute();
+    $db->setQuery("DELETE FROM #__dharmaclinic_reviews WHERE author_name LIKE 'QA-MCP-CL%'")->execute();
     // QA-записи клиники: точные id по названию с пометкой QA-MCP-CL, через модели компонента (корзина → удаление).
     $clinic = $app->bootComponent('com_dharmaclinic');
     $app->getLanguage()->load('com_dharmaclinic', JPATH_ADMINISTRATOR);

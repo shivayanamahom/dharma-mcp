@@ -231,7 +231,7 @@ abstract class AbstractEntityTool extends AbstractClinicTool
             return $this->storeChecked($context, $def, $data);
         } catch (ToolException $e) {
             throw $e;
-        } catch (\RuntimeException | \InvalidArgumentException | \DomainException $e) {
+        } catch (\RuntimeException | \InvalidArgumentException | \DomainException | \Exception $e) {
             // Модели клиники сообщают о неверных данных исключениями с языковым ключом в тексте.
             $message = trim(strip_tags(Text::_($e->getMessage())));
 

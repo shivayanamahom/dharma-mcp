@@ -27,7 +27,6 @@ use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\MVC\Controller\BaseController;
 use Joomla\Database\DatabaseInterface;
-use Joomla\Database\ParameterType;
 
 /**
  * Единственная точка входа MCP (Streamable HTTP, JSON-RPC 2.0 поверх POST).
@@ -104,7 +103,7 @@ class DisplayController extends BaseController
         }
 
         $limit = (int) $params->get('rate_limit_minute', 60);
-        if ($limit > 0 && $this->requestsLastMinute($db, (int) $auth->token->id) >= $limit) {
+        if ($limit > 0 && (new AuditLogger($db))->requestsLastMinute((int) $auth->token->id) >= $limit) {
             header('Retry-After: 30');
             $this->send(429, JsonRpcResponse::error(null, new JsonRpcError(JsonRpcError::RATE_LIMITED, 'Too many requests, retry later')));
         }
@@ -182,20 +181,6 @@ class DisplayController extends BaseController
         exit;
     }
 
-    private function requestsLastMinute(DatabaseInterface $db, int $tokenId): int
-    {
-        $since = Factory::getDate('-1 minute')->toSql();
-        $query = $db->createQuery()
-            ->select('COUNT(*)')
-            ->from($db->quoteName('#__dharma_mcp_logs'))
-            ->where($db->quoteName('token_id') . ' = :token')
-            ->where($db->quoteName('created') . ' >= :since')
-            ->bind(':token', $tokenId, ParameterType::INTEGER)
-            ->bind(':since', $since);
-
-        return (int) $db->setQuery($query)->loadResult();
-    }
-
     /**
      * Запрос без действительного токена попадает в журнал, чтобы владелец видел, что клиент до сайта дошёл, но не вошёл.
      * С одного адреса пишется не больше пяти записей в минуту: журнал не должен забиваться сканерами.
@@ -203,16 +188,10 @@ class DisplayController extends BaseController
     private function logRejected(DatabaseInterface $db, string $method, string $message, ?string $ip, ?string $userAgent): void
     {
         try {
-            $since = \Joomla\CMS\Factory::getDate('-1 minute')->toSql();
-            $recent = (int) $db->setQuery(
-                $db->createQuery()->select('COUNT(*)')->from($db->quoteName('#__dharma_mcp_logs'))
-                    ->where($db->quoteName('method') . ' LIKE ' . $db->quote('auth/%'))
-                    ->where($db->quoteName('ip') . ' = ' . $db->quote((string) $ip))
-                    ->where($db->quoteName('created') . ' > ' . $db->quote($since))
-            )->loadResult();
+            $logger = new AuditLogger($db);
 
-            if ($recent < 5) {
-                (new AuditLogger($db))->log(null, null, $method, null, null, 'error', 0, $message, $ip, $userAgent);
+            if ($logger->rejectedFromIpLastMinute($ip) < 5) {
+                $logger->log(null, null, $method, null, null, 'error', 0, $message, $ip, $userAgent);
             }
         } catch (\Throwable) {
             // журнал не должен мешать ответу

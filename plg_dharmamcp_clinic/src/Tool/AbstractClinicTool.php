@@ -51,6 +51,9 @@ abstract class AbstractClinicTool extends AbstractTool
             throw ToolException::notFound('Dharma Clinic (com_dharmaclinic) is not installed or is disabled on this site.');
         }
 
+        // Как вход в админку компонента: без права «Доступ» (core.manage) инструменты клиники недоступны, даже если «правка» унаследована от группы.
+        $context->requireCan('core.manage', self::COMPONENT, 'use the clinic tools');
+
         // Поля форм компонента при создании обращаются к документу страницы; в запросе к MCP его нет, поэтому создаётся пустой.
         if ($context->app->getDocument() === null) {
             $context->app->loadDocument(\Joomla\CMS\Factory::getContainer()->get(\Joomla\CMS\Document\FactoryInterface::class)->createDocument('html'));

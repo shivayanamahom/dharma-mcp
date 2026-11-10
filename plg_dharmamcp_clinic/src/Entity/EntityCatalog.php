@@ -92,6 +92,11 @@ final class EntityCatalog
                 'model' => 'Leadstatus', 'table' => '#__dharmaclinic_lead_statuses', 'delete' => 'none',
                 'columns' => ['id', 'code', 'title', 'state', 'ordering'],
             ] + $base,
+            // Не входит в общие инструменты: отзывы ведут инструменты reviews.* (модерация, ответ).
+            'review' => [
+                'label' => 'Review', 'summary' => '', 'model' => 'Review', 'table' => '#__dharmaclinic_reviews', 'state' => 'status', 'hidden' => true,
+                'columns' => ['id', 'author_name', 'status'],
+            ] + $base,
         ];
     }
 

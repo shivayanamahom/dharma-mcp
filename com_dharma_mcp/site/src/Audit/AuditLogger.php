@@ -21,6 +21,35 @@ final class AuditLogger
         private readonly DatabaseInterface $db
     ) {}
 
+    /** Сколько вызовов сделал токен за последнюю минуту (ограничение частоты запросов). */
+    public function requestsLastMinute(int $tokenId): int
+    {
+        $since = Factory::getDate('-1 minute')->toSql();
+        $query = $this->db->createQuery()
+            ->select('COUNT(*)')
+            ->from($this->db->quoteName('#__dharma_mcp_logs'))
+            ->where($this->db->quoteName('token_id') . ' = :token')
+            ->where($this->db->quoteName('created') . ' >= :since')
+            ->bind(':token', $tokenId, \Joomla\Database\ParameterType::INTEGER)
+            ->bind(':since', $since);
+
+        return (int) $this->db->setQuery($query)->loadResult();
+    }
+
+    /** Сколько отклонённых обращений (без действительного токена) записано с адреса за последнюю минуту. */
+    public function rejectedFromIpLastMinute(?string $ip): int
+    {
+        $since = Factory::getDate('-1 minute')->toSql();
+        $query = $this->db->createQuery()
+            ->select('COUNT(*)')
+            ->from($this->db->quoteName('#__dharma_mcp_logs'))
+            ->where($this->db->quoteName('method') . ' LIKE ' . $this->db->quote('auth/%'))
+            ->where($this->db->quoteName('ip') . ' = ' . $this->db->quote((string) $ip))
+            ->where($this->db->quoteName('created') . ' > ' . $this->db->quote($since));
+
+        return (int) $this->db->setQuery($query)->loadResult();
+    }
+
     /**
      * Длинные значения (содержимое файла, картинка в base64, большой текст) в журнал целиком не кладутся:
      * остаётся начало и число знаков. Иначе журнал разрастался бы на мегабайты за день.
