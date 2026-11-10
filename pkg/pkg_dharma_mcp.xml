@@ -15,6 +15,7 @@
 		<file type="plugin" id="dharmamcp" group="system">plg_system_dharmamcp.zip</file>
 		<file type="plugin" id="shop" group="dharmamcp">plg_dharmamcp_shop.zip</file>
 		<file type="plugin" id="radicalmart" group="dharmamcp">plg_dharmamcp_radicalmart.zip</file>
+		<file type="plugin" id="clinic" group="dharmamcp">plg_dharmamcp_clinic.zip</file>
 		<file type="plugin" id="content" group="dharmamcp">plg_dharmamcp_content.zip</file>
 		<file type="plugin" id="template" group="dharmamcp">plg_dharmamcp_template.zip</file>
 		<file type="plugin" id="system" group="dharmamcp">plg_dharmamcp_system.zip</file>

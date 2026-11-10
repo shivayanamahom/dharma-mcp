@@ -2,7 +2,7 @@
 
 > Файл создаётся скриптом `dev/gen-tools-doc.py` из исходников. Не редактируйте вручную.
 
-Всего инструментов: **81**.
+Всего инструментов: **88**.
 
 Описания инструментов написаны по-английски: их читает ИИ-ассистент, и так он выбирает инструмент точнее. Уровни доступа и подтверждения — в [SECURITY.md](SECURITY.md).
 
@@ -49,6 +49,20 @@
 | `shop.settings` | `shop:read` | чтение | Shows the options of the shop component with their current values. Without "section" lists the sections (shop, catalog, display, favorites, cart, images, filter, seo, order...). With "section" returns every option of it: name, type, label, allowed values and the current value. The product filter on the shop level is the "filter" section. Change options with shop.settings_set. |
 | `shop.settings_set` | `shop:write` | запись | Changes options of the shop component (see shop.settings for names and allowed values). Pass only the options you want to change in "options", e.g. {"currency_code": "EUR", "currency_symbol": "€"}. This changes how the live shop behaves: the user must confirm. Access rights of the component are not changed here. |
 | `stock.low` | `shop:read` | чтение | Published products whose stock is at or below a threshold (only products with stock tracking enabled), lowest stock first. Use it for "what is running out". Change stock with products.update (stock_qty). |
+
+## Клиника (Dharma Clinic)
+
+Плагин `dharmamcp/clinic`. Включён по умолчанию, если установлен Dharma Clinic. Области `clinic:read`, `clinic:write`; заявки и контакты — только с `customers:pii`.
+
+| Инструмент | Область | Уровень | Что делает |
+|---|---|---|---|
+| `clinic.entities` | `clinic:read` | чтение | Start here before creating or changing clinic data. Without arguments lists the kinds of records that clinic.entity_list / clinic.entity_get / clinic.entity_create / clinic.entity_update / clinic.entity_delete work with: directions, services, doctors, diseases, branches, price groups, price items, questions and answers, site forms and lead statuses. With "entity" returns every field of that record as the admin form defines it: name (nested as "params.reviewer"), type, label, required, allowed values, and "only_if" conditions. Leads, reviews, settings and the price list import have their own tools (leads.*, reviews.*, clinic.settings*, price import). |
+| `clinic.entity_create` | `clinic:write` | черновик | Creates one record: direction, service, doctor, disease, branch, price_group, price_item, question, site_form or lead_status. Call clinic.entities with the same "entity" first to learn the fields. Pass them in "data". The record is always created unpublished (hidden from visitors); publish it later with clinic.entity_update and {"state": true} after the user agrees. Medical texts (diseases, services, doctors, answers) are drafts: the clinic doctors must check them. Returns the new id. |
+| `clinic.entity_delete` | `clinic:write` | опасное | Moves a record to the trash (hidden from the site, can be restored with clinic.entity_update and {"state": false}) or, with permanent=true, deletes it for good. Works for direction, service, doctor, disease, branch, price_group, price_item, question. Site forms and lead statuses cannot be deleted. Deleting a doctor, service or direction removes its links; do not delete the main branch. The user must always confirm. Never delete on your own initiative. |
+| `clinic.entity_get` | `clinic:read` | чтение | Returns the full record (all form fields with current values, including links to other records) of a direction, service, doctor, disease, branch, price group, price item, question, site form or lead status. For leads and reviews use leads.* and reviews.* tools. |
+| `clinic.entity_list` | `clinic:read` | чтение | Lists records of one kind (direction, service, doctor, disease, branch, price_group, price_item, question, site_form, lead_status) with their main columns. Trashed records are hidden unless state is "trashed" or "all". Use clinic.entity_get for the full record. |
+| `clinic.entity_update` | `clinic:write` | запись | Changes one existing record (direction, service, doctor, disease, branch, price_group, price_item, question, site_form, lead_status). Pass only the fields you want to change in "data"; everything else stays as it is. Use {"state": true} to publish and {"state": false} to unpublish. This edits the live site: the user must confirm. To delete use clinic.entity_delete. |
+| `clinic.info` | `clinic:read` | чтение | Overview of the clinic site: Dharma Clinic version, the main branch (name, address, hours), how many directions, services, doctors, diseases, price items, questions are published and unpublished, and the work queue (new leads, reviews waiting for moderation, unanswered questions). No personal data. Call it first to orient yourself, then clinic.entities to see what can be managed. |
 
 ## RadicalMart
 

@@ -23,7 +23,7 @@ return new class () implements InstallerScriptInterface {
      * Наборы, включаемые при первой установке. «Шаблон» и «Система» дают доступ к файлам и настройкам сайта,
      * поэтому остаются выключенными: их включает администратор осознанно (Плагины → группа dharmamcp).
      */
-    private const ENABLE_ON_INSTALL = [['system', 'dharmamcp'], ['dharmamcp', 'shop'], ['dharmamcp', 'radicalmart'], ['dharmamcp', 'content']];
+    private const ENABLE_ON_INSTALL = [['system', 'dharmamcp'], ['dharmamcp', 'shop'], ['dharmamcp', 'radicalmart'], ['dharmamcp', 'clinic'], ['dharmamcp', 'content']];
 
     public function install(InstallerAdapter $adapter): bool
     {
@@ -68,6 +68,7 @@ return new class () implements InstallerScriptInterface {
         )->loadResult() > 0;
 
         $radicalmartInstalled = \Joomla\CMS\Component\ComponentHelper::isEnabled('com_radicalmart');
+        $clinicInstalled      = \Joomla\CMS\Component\ComponentHelper::isEnabled('com_dharmaclinic');
 
         foreach (self::ENABLE_ON_INSTALL as [$folder, $element]) {
             if ($element === 'shop' && !$shopInstalled) {
@@ -75,6 +76,10 @@ return new class () implements InstallerScriptInterface {
             }
 
             if ($element === 'radicalmart' && !$radicalmartInstalled) {
+                continue;
+            }
+
+            if ($element === 'clinic' && !$clinicInstalled) {
                 continue;
             }
 

@@ -10,6 +10,7 @@ final class ScopeCatalog
         $definitions = [
             'shop' => ['shop:read', 'shop:write'],
             'radicalmart' => ['radicalmart:read', 'radicalmart:write'],
+            'clinic' => ['clinic:read', 'clinic:write'],
             'content' => ['content:read', 'content:write'],
             'template' => ['template:read', 'template:write'],
             'system' => ['system:read', 'system:write'],

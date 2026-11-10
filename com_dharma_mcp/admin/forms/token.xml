@@ -27,6 +27,8 @@
 			required="true">
 			<option value="shop:read">COM_DHARMA_MCP_SCOPE_SHOP_READ</option>
 			<option value="shop:write">COM_DHARMA_MCP_SCOPE_SHOP_WRITE</option>
+			<option value="clinic:read">COM_DHARMA_MCP_SCOPE_CLINIC_READ</option>
+			<option value="clinic:write">COM_DHARMA_MCP_SCOPE_CLINIC_WRITE</option>
 			<option value="radicalmart:read">COM_DHARMA_MCP_SCOPE_RADICALMART_READ</option>
 			<option value="radicalmart:write">COM_DHARMA_MCP_SCOPE_RADICALMART_WRITE</option>
 			<option value="content:read">COM_DHARMA_MCP_SCOPE_CONTENT_READ</option>
