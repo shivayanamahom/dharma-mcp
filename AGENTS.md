@@ -46,6 +46,7 @@ com_dharma_mcp/            компонент (admin/, site/, dharma_mcp.xml)
 plg_system_dharmamcp/      системный плагин: /mcp, /oauth/*, /.well-known/*
 plg_dharmamcp_shop/        набор «Магазин»
 plg_dharmamcp_radicalmart/ отдельный набор RadicalMart (radicalmart.*)
+plg_dharmamcp_clinic/      набор «Клиника» (Dharma Clinic)
 plg_dharmamcp_content/     набор «Материалы и меню»
 plg_dharmamcp_template/    набор «Шаблон»
 plg_dharmamcp_system/      набор «Система»
@@ -66,6 +67,8 @@ build.sh                   сборка dist/pkg_dharma_mcp-<версия>.zip
 - **Сквозной автотест:** `MCP_TOKEN=<токен> python3 dev/qa/mcp_qa.py --url https://сайт/index.php/mcp --write` проверяет протокол, защиту, чтение всех инструментов и сценарии записи (материалы, меню, модули, магазин, шаблон, система) и убирает за собой. Прогоняйте его во всех трёх режимах сервера; остатки на локальном стенде убирает `dev/qa/cleanup_local.php`.
 - **Страницы, формы и контроллеры без браузера:** `php dev/web-harness.php admin|site "<query>" [POST] ['<json>']` выполняет веб-запрос в консоли от имени Суперпользователя (без паролей), показывает `Status`/`Location` и тело. Прогоняйте через него каждую новую страницу и действие админки и OAuth-экран согласия; запросы из консоли к контроллерам напрямую не работают.
 - Вход в админку для проверки интерфейса — по правилам репозитория магазина (тестовый пользователь из `dev/.env`, пароль не повторять в ответах).
+
+- **Набор «Клиника»:** стенд `https://clinic.test` (`DHARMA_SITE=/Volumes/Work/Server/www/clinic`). Проверка: `php dev/qa/clinic_fixture.php seed && php dev/qa/clinic_fixture.php rows`, затем `php dev/qa/clinic_fixture.php mode full_write|drafts|read_only` и `python3 dev/qa/clinic_qa.py --url https://clinic.test/mcp --mode …`, в конце `php dev/qa/clinic_fixture.php cleanup` (убирает токены, возвращает режим и настройку «персональные данные», удаляет записи QA-MCP-CL). Записи клиники пишутся только через её формы, модели и службы (`LeadStatusService`, `LeadQuestionService`).
 
 ## Ловушки Joomla 6, на которые уже наступали
 
