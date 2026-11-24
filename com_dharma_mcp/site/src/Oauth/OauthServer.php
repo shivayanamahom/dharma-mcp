@@ -45,6 +45,7 @@ final class OauthServer
         'shop:read' => false, 'shop:write' => false,
         'radicalmart:read' => false, 'radicalmart:write' => false,
         'clinic:read' => false, 'clinic:write' => false,
+        'sanatorium:read' => false, 'sanatorium:write' => false,
         'content:read' => false, 'content:write' => false,
         'template:read' => true, 'template:write' => true,
         'system:read' => true, 'system:write' => true,

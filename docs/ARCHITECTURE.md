@@ -2,7 +2,7 @@
 
 ## 1. Состав
 
-Пакет `pkg_dharma_mcp` содержит семь расширений.
+Пакет `pkg_dharma_mcp` состоит из компонента, системного плагина и наборов инструментов.
 
 | Расширение | Тип / группа | Роль |
 |---|---|---|
@@ -10,6 +10,8 @@
 | `plg_system_dharmamcp` | плагин `system` | короткие адреса `/mcp`, `/oauth/*`, `/.well-known/*` до маршрутизации Joomla |
 | `plg_dharmamcp_shop` | плагин `dharmamcp` | набор «Магазин» |
 | `plg_dharmamcp_radicalmart` | плагин `dharmamcp` | отдельный набор RadicalMart |
+| `plg_dharmamcp_clinic` | плагин `dharmamcp` | набор «Клиника» |
+| `plg_dharmamcp_sanatorium` | плагин `dharmamcp` | набор «Санаторий» |
 | `plg_dharmamcp_content` | плагин `dharmamcp` | набор «Материалы и меню» |
 | `plg_dharmamcp_template` | плагин `dharmamcp` | набор «Шаблон» |
 | `plg_dharmamcp_system` | плагин `dharmamcp` | набор «Система» |

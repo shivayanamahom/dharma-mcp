@@ -14,6 +14,7 @@ PACKS = [
     ("core", "Ядро", "com_dharma_mcp/site/src/Tool", "Всегда доступно."),
     ("shop", "Магазин (Dharma Shop)", "plg_dharmamcp_shop/src/Tool", "Плагин `dharmamcp/shop`. Включён по умолчанию, если установлен Dharma Shop."),
     ("clinic", "Клиника (Dharma Clinic)", "plg_dharmamcp_clinic/src/Tool", "Плагин `dharmamcp/clinic`. Включён по умолчанию, если установлен Dharma Clinic. Области `clinic:read`, `clinic:write`; заявки и контакты — только с `customers:pii`."),
+    ("sanatorium", "Санаторий (Dharma Sanatorium)", "plg_dharmamcp_sanatorium/src/Tool", "Плагин `dharmamcp/sanatorium`. Области `sanatorium:read` и `sanatorium:write`; для данных гостей нужен отдельный доступ."),
     ("radicalmart", "RadicalMart", "plg_dharmamcp_radicalmart/src/Tool", "Плагин `dharmamcp/radicalmart`. Нужен RadicalMart 3.0.27+. Отдельные области `radicalmart:read` и `radicalmart:write`."),
     ("content", "Материалы и меню", "plg_dharmamcp_content/src/Tool", "Плагин `dharmamcp/content`. Включён по умолчанию."),
     ("template", "Шаблон", "plg_dharmamcp_template/src/Tool", "Плагин `dharmamcp/template`. **Выключен по умолчанию** (доступ к файлам). Нужен Суперпользователь для записи файлов."),

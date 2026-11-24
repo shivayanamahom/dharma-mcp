@@ -11,6 +11,7 @@ final class ScopeCatalog
             'shop' => ['shop:read', 'shop:write'],
             'radicalmart' => ['radicalmart:read', 'radicalmart:write'],
             'clinic' => ['clinic:read', 'clinic:write'],
+            'sanatorium' => ['sanatorium:read', 'sanatorium:write'],
             'content' => ['content:read', 'content:write'],
             'template' => ['template:read', 'template:write'],
             'system' => ['system:read', 'system:write'],

@@ -95,6 +95,12 @@
 			<option value="0">JNO</option>
 			<option value="1">JYES</option>
 		</field>
+		<field name="pack_sanatorium" type="radio" layout="joomla.form.field.radio.switcher"
+			label="COM_DHARMA_MCP_PACK_SANATORIUM" description="COM_DHARMA_MCP_PACK_SANATORIUM_DESC"
+			default="1" filter="integer">
+			<option value="0">JNO</option>
+			<option value="1">JYES</option>
+		</field>
 		<field name="pack_content" type="radio" layout="joomla.form.field.radio.switcher"
 			label="COM_DHARMA_MCP_PACK_CONTENT" description="COM_DHARMA_MCP_PACK_CONTENT_DESC"
 			default="1" filter="integer">

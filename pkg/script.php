@@ -23,7 +23,7 @@ return new class () implements InstallerScriptInterface {
      * Наборы, включаемые при первой установке. «Шаблон» и «Система» дают доступ к файлам и настройкам сайта,
      * поэтому остаются выключенными: их включает администратор осознанно (Плагины → группа dharmamcp).
      */
-    private const ENABLE_ON_INSTALL = [['system', 'dharmamcp'], ['dharmamcp', 'shop'], ['dharmamcp', 'radicalmart'], ['dharmamcp', 'clinic'], ['dharmamcp', 'content']];
+    private const ENABLE_ON_INSTALL = [['system', 'dharmamcp'], ['dharmamcp', 'shop'], ['dharmamcp', 'radicalmart'], ['dharmamcp', 'clinic'], ['dharmamcp', 'sanatorium'], ['dharmamcp', 'content']];
 
     public function install(InstallerAdapter $adapter): bool
     {
@@ -80,6 +80,10 @@ return new class () implements InstallerScriptInterface {
             }
 
             if ($element === 'clinic' && !$clinicInstalled) {
+                continue;
+            }
+
+            if ($element === 'sanatorium' && !\Joomla\CMS\Component\ComponentHelper::isEnabled('com_dharmasanatorium')) {
                 continue;
             }
 

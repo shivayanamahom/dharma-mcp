@@ -86,6 +86,17 @@ final class AuditLogger
         try {
             $argsJson = null;
             if (!empty($arguments)) {
+                if ($toolName !== null && str_starts_with($toolName, 'sanatorium.')) {
+                    // Записываем состав правки, не тексты заявок, отзывы и содержимое загружаемых файлов.
+                    $arguments = array_intersect_key($arguments, array_flip(['entity', 'id', 'status', 'permanent', 'data']));
+                    if (isset($arguments['data'])) {
+                        $arguments['fields'] = is_array($arguments['data']) ? array_keys($arguments['data']) : [];
+                        unset($arguments['data']);
+                    }
+                    if (in_array($arguments['entity'] ?? '', ['lead', 'review', 'question'], true) && $errorMessage !== null) {
+                        $errorMessage = 'Sanatorium guest-data operation failed.';
+                    }
+                }
                 // Маскируем пароли, токены и чувствительные PII (email, телефон, адрес) в аргументах
                 $clean = self::shorten(PiiMasker::sanitizeLogArguments($arguments));
                 $argsJson = json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);

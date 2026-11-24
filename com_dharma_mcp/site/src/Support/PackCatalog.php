@@ -24,6 +24,7 @@ final class PackCatalog
         'shop' => ['com_dharmashop', false],
         'radicalmart' => ['com_radicalmart', false],
         'clinic' => ['com_dharmaclinic', false],
+        'sanatorium' => ['com_dharmasanatorium', false],
         'content' => [null, false],
         'template' => [null, true],
         'system' => [null, true],
